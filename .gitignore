@@ -1,0 +1,9 @@
+.vs
+*.sln
+
+# Unity 一堆东西貌似没用的
+Library
+Logs
+obj
+Temp
+*.csproj

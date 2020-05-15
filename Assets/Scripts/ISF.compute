@@ -1,0 +1,202 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+#pragma kernel FFTHorizontal
+#pragma kernel FFTVertical
+
+#pragma kernel IFFTHorizontal
+#pragma kernel IFFTVertical
+
+#pragma kernel IFFTVerticalEnd
+#pragma kernel IFFTHorizontalEnd
+#pragma kernel IFFTFlip
+#pragma kernel BlitIORT
+#pragma kernel BlitDebugOutput
+
+#define THREADS 8
+#define N_THREADS THREADS
+#define PI 3.1415926
+RWTexture3D<float2> SchroedingerMask;
+
+float3 size;
+float hbar;
+float dt;
+
+int N;
+int FFTPass;
+int Ns;
+RWTexture2D<float2> InputRT;
+RWTexture2D<float2> OutputRT;
+
+RWTexture2D<float4> DebugOutput;
+RWTexture2D<int> bufferfly;
+
+[numthreads(THREADS, THREADS, 1)]
+void BlitDebugOutput(int3 id : SV_DispatchThreadID)
+{
+    DebugOutput[id.xy] = float4(InputRT[id.xy], 0, 0);
+}
+
+[numthreads(THREADS, THREADS, 1)]
+void BlitIORT(int3 id : SV_DispatchThreadID)
+{
+    OutputRT[id.xy] = InputRT[id.xy];
+}
+
+[numthreads(THREADS, THREADS, THREADS)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    float3 k = (id.xyz - 1 - THREADS / 2) / size;
+    float fac = -4 * PI * PI * hbar;
+    float lambda = fac * dot(k, k);
+    float intern = lambda * dt / 2;
+    SchroedingerMask[id.xyz] = float2(cos(intern), sin(intern));
+}
+
+
+void ShroedingerFlow()
+{
+    
+}
+
+inline float2 complexMul(float2 a, float2 b)
+{
+    return float2(
+		a.x * b.x - a.y * b.y,
+		a.x * b.y + a.y * b.x
+	);
+}
+
+//横向FFT计算,只针对第m-1阶段，最后一阶段需要特殊处理
+[numthreads(8, 8, 1)]
+void FFTHorizontal(uint3 id : SV_DispatchThreadID)
+{
+    int2 idxs = id.xy;
+    // 原来的实现是 Ns = pow(2, FFTPass - 1);
+    // idxs.x = (id.x / (Ns * 2)) * Ns + id.x % Ns
+    // 这个算法魔法般的计算出了 Butterfly 操作中需要用到的点
+    idxs.x = ((id.x >> FFTPass) << (FFTPass - 1)) + (id.x & (Ns - 1));
+    float angle = -2.0f * PI * (id.x / (Ns * 2.0f));
+    float2 w = float2(cos(angle), sin(angle));
+
+    float2 x0 = InputRT[idxs].xy;
+    float2 x1 = InputRT[int2(idxs.x + N * 0.5f, idxs.y)].xy;
+
+    float2 output = x0 + float2(w.x * x1.x - w.y * x1.y, w.x * x1.y + w.y * x1.x);
+    OutputRT[id.xy] = output;
+}
+
+//纵向FFT计算,只针对第m-1阶段，最后一阶段需要特殊处理
+[numthreads(8, 8, 1)]
+void FFTVertical(uint3 id : SV_DispatchThreadID)
+{
+    int2 idxs = id.xy;
+    // 原来的实现是 Ns = pow(2, FFTPass - 1);
+    // idxs.x = (id.x / (Ns * 2)) * Ns + id.x % Ns
+    // 这个算法魔法般的计算出了 Butterfly 操作中需要用到的点
+    // 这个算法把 Index 中第 FFTPass 位去掉了 (从低位从1开始算起)
+    idxs.y = ((id.y >> FFTPass) << (FFTPass - 1)) + (id.y & (Ns - 1));
+    float angle = -2.0f * PI * (id.y / (Ns * 2.0f));
+    float2 w = float2(cos(angle), sin(angle));
+
+    float2 x0 = InputRT[idxs].xy;
+    float2 x1 = InputRT[int2(idxs.x, idxs.y + N * 0.5f)].xy;
+
+    float2 output = x0 + float2(w.x * x1.x - w.y * x1.y, w.x * x1.y + w.y * x1.x);
+    OutputRT[id.xy] = output;
+}
+
+
+
+//横向FFT计算,只针对第m-1阶段，最后一阶段需要特殊处理
+[numthreads(8, 8, 1)]
+void IFFTHorizontal(uint3 id : SV_DispatchThreadID)
+{
+    int2 idxs = id.xy;
+    // 原来的实现是 Ns = pow(2, FFTPass - 1);
+    // idxs.x = (id.x / (Ns * 2)) * Ns + id.x % Ns
+    // 这个算法魔法般的计算出了 Butterfly 操作中需要用到的点
+    idxs.x = ((id.x >> FFTPass) << (FFTPass - 1)) + (id.x & (Ns - 1));
+    float angle = 2.0f * PI * (id.x / (Ns * 2.0f));
+    float2 w = float2(cos(angle), sin(angle));
+
+    float2 x0 = InputRT[idxs].xy;
+    float2 x1 = InputRT[int2(idxs.x + N * 0.5f, idxs.y)].xy;
+
+    float2 output = x0 + float2(w.x * x1.x - w.y * x1.y, w.x * x1.y + w.y * x1.x);
+    
+    OutputRT[id.xy] = output;
+}
+
+
+//横向FFT最后阶段计算,需要进行特别处理
+[numthreads(8, 8, 1)]
+void IFFTHorizontalEnd(uint3 id : SV_DispatchThreadID)
+{
+    int2 idxs = id.xy;
+    idxs.x = ((id.x >> FFTPass) << (FFTPass - 1)) + (id.x & (Ns - 1));
+    float angle = 2.0f * PI * (id.x / (Ns * 2.0f));
+    float2 w = float2(cos(angle), sin(angle));
+
+    float2 x0 = InputRT[idxs].xy;
+    float2 x1 = InputRT[int2(idxs.x + N * 0.5f, idxs.y)].xy;
+
+    float2 output = x0 + float2(w.x * x1.x - w.y * x1.y, w.x * x1.y + w.y * x1.x);
+    
+    output.y = -output.y;
+    output /= N;
+    OutputRT[id.xy] = output;
+}
+
+
+//纵向FFT计算,只针对第m-1阶段，最后一阶段需要特殊处理
+[numthreads(8, 8, 1)]
+void IFFTVertical(uint3 id : SV_DispatchThreadID)
+{
+    int2 idxs = id.xy;
+    // 原来的实现是 Ns = pow(2, FFTPass - 1);
+    // idxs.x = (id.x / (Ns * 2)) * Ns + id.x % Ns
+    // 这个算法魔法般的计算出了 Butterfly 操作中需要用到的点
+    // 这个算法把 Index 中第 FFTPass 位去掉了 (从低位从1开始算起)
+    idxs.y = ((id.y >> FFTPass) << (FFTPass - 1)) + (id.y & (Ns - 1));
+    float angle = 2.0f * PI * (id.y / (Ns * 2.0f));
+    float2 w = float2(cos(angle), sin(angle));
+
+    float2 x0 = InputRT[idxs].xy;
+    float2 x1 = InputRT[int2(idxs.x, idxs.y + N * 0.5f)].xy;
+
+    float2 output = x0 + float2(w.x * x1.x - w.y * x1.y, w.x * x1.y + w.y * x1.x);
+
+    OutputRT[id.xy] = output;
+}
+//纵向FFT最后阶段计算,需要进行特别处理
+[numthreads(8, 8, 1)]
+void IFFTVerticalEnd(uint3 id : SV_DispatchThreadID)
+{
+    int2 idxs = id.xy;
+    // 原来的实现是 Ns = pow(2, FFTPass - 1);
+    // idxs.x = (id.x / (Ns * 2)) * Ns + id.x % Ns
+    // 这个算法魔法般的计算出了 Butterfly 操作中需要用到的点
+    // 这个算法把 Index 中第 FFTPass 位去掉了 (从低位从1开始算起)
+    idxs.y = ((id.y >> FFTPass) << (FFTPass - 1)) + (id.y & (Ns - 1));
+    float angle = 2.0f * PI * (id.y / (Ns * 2.0f));
+    float2 w = float2(cos(angle), sin(angle));
+
+    float2 x0 = InputRT[idxs].xy;
+    float2 x1 = InputRT[int2(idxs.x, idxs.y + N * 0.5f)].xy;
+
+    float2 output = x0 + float2(w.x * x1.x - w.y * x1.y, w.x * x1.y + w.y * x1.x);
+    
+    output.y = -output.y;
+    output /= N;
+    OutputRT[id.xy] = output;
+}
+
+[numthreads(8, 8, 1)]
+void IFFTFlip(uint3 id : SV_DispatchThreadID)
+{
+    float2 output = InputRT[id.xy];
+    output.y = -output.y;
+    output /= N;
+    OutputRT[id.xy] = output;
+}
