@@ -3,19 +3,27 @@
 
 #pragma kernel FFTHorizontal
 #pragma kernel FFTVertical
+#pragma kernel FFTDepth
 
 #pragma kernel IFFTHorizontal
 #pragma kernel IFFTVertical
+#pragma kernel IFFTDepth
 
 #pragma kernel IFFTVerticalEnd
 #pragma kernel IFFTHorizontalEnd
+#pragma kernel IFFTDepthEnd
+
 #pragma kernel IFFTFlip
 #pragma kernel BlitIORT
 #pragma kernel BlitDebugOutput
+#pragma kernel BlitIOTex
+#pragma kernel BlitSliceOf3DTexture
+
 
 #define THREADS 8
 #define N_THREADS THREADS
 #define PI 3.1415926
+#define THE_THREDS [numthreads(8, 8, 8)]
 RWTexture3D<float2> SchroedingerMask;
 
 float3 size;
@@ -25,22 +33,52 @@ float dt;
 int N;
 int FFTPass;
 int Ns;
-RWTexture2D<float2> InputRT;
-RWTexture2D<float2> OutputRT;
+RWTexture3D<float2> InputRT;
+RWTexture3D<float2> OutputRT;
+Texture3D<float2> InputTex;
 
 RWTexture2D<float4> DebugOutput;
-RWTexture2D<int> bufferfly;
+
+
+RWTexture2D<float4> Sliced;
+int layer;
+
+
+// FFT 实现算法的论文: https://www.microsoft.com/en-us/research/publication/fast-computation-of-general-fourier-transforms-on-gpus/
+// IFFT 参考: http://wwwa.pikara.ne.jp/okojisan/otfft-en/cooley-tukey.html
+
+// 辅助函数, 方便CPU 能够读取 GPU 数据, 便于验证正确性
+// ================================================
+
+
+// ref: https://answers.unity.com/questions/840983/how-do-i-copy-a-3d-rendertexture-isvolume-true-to.html
+// InputRT: 输入的 3D Texture
+// layer: 3D Texture 的 Z 轴
+// Sliced: 输出的 切片后的 2D Texture
+[numthreads(THREADS, THREADS, 1)]
+void BlitSliceOf3DTexture(int3 id: SV_DispatchThreadID)
+{
+    int3 pos = int3(id.xy, layer);
+    Sliced[id.xy] = float4(InputRT[pos].xy, 0, 0);
+}
+
 
 [numthreads(THREADS, THREADS, 1)]
 void BlitDebugOutput(int3 id : SV_DispatchThreadID)
 {
-    DebugOutput[id.xy] = float4(InputRT[id.xy], 0, 0);
+    DebugOutput[id.xy] = float4(InputRT[id.xyz], 0, 0);
 }
 
 [numthreads(THREADS, THREADS, 1)]
 void BlitIORT(int3 id : SV_DispatchThreadID)
 {
-    OutputRT[id.xy] = InputRT[id.xy];
+    OutputRT[id.xyz] = InputRT[id.xyz];
+}
+
+[numthreads(THREADS, THREADS, THREADS)]
+void BlitIOTex(int3 id : SV_DispatchThreadID)
+{
+    OutputRT[id.xyz] = InputTex.Load(int4(id, 0));
 }
 
 [numthreads(THREADS, THREADS, THREADS)]
@@ -59,6 +97,9 @@ void ShroedingerFlow()
     
 }
 
+
+// FFT & IFF 3D 版本
+// ==========================================
 inline float2 complexMul(float2 a, float2 b)
 {
     return float2(
@@ -67,11 +108,11 @@ inline float2 complexMul(float2 a, float2 b)
 	);
 }
 
-//横向FFT计算,只针对第m-1阶段，最后一阶段需要特殊处理
-[numthreads(8, 8, 1)]
+//横向FFT计算
+THE_THREDS
 void FFTHorizontal(uint3 id : SV_DispatchThreadID)
 {
-    int2 idxs = id.xy;
+    int3 idxs = id.xyz;
     // 原来的实现是 Ns = pow(2, FFTPass - 1);
     // idxs.x = (id.x / (Ns * 2)) * Ns + id.x % Ns
     // 这个算法魔法般的计算出了 Butterfly 操作中需要用到的点
@@ -80,39 +121,51 @@ void FFTHorizontal(uint3 id : SV_DispatchThreadID)
     float2 w = float2(cos(angle), sin(angle));
 
     float2 x0 = InputRT[idxs].xy;
-    float2 x1 = InputRT[int2(idxs.x + N * 0.5f, idxs.y)].xy;
+    float2 x1 = InputRT[int3(idxs.x + N * 0.5f, idxs.y, idxs.z)].xy;
 
     float2 output = x0 + float2(w.x * x1.x - w.y * x1.y, w.x * x1.y + w.y * x1.x);
-    OutputRT[id.xy] = output;
+    OutputRT[id.xyz] = output;
 }
 
-//纵向FFT计算,只针对第m-1阶段，最后一阶段需要特殊处理
-[numthreads(8, 8, 1)]
+//纵向FFT计算
+THE_THREDS
 void FFTVertical(uint3 id : SV_DispatchThreadID)
 {
-    int2 idxs = id.xy;
-    // 原来的实现是 Ns = pow(2, FFTPass - 1);
-    // idxs.x = (id.x / (Ns * 2)) * Ns + id.x % Ns
-    // 这个算法魔法般的计算出了 Butterfly 操作中需要用到的点
-    // 这个算法把 Index 中第 FFTPass 位去掉了 (从低位从1开始算起)
+    int3 idxs = id.xyz;
     idxs.y = ((id.y >> FFTPass) << (FFTPass - 1)) + (id.y & (Ns - 1));
     float angle = -2.0f * PI * (id.y / (Ns * 2.0f));
     float2 w = float2(cos(angle), sin(angle));
 
     float2 x0 = InputRT[idxs].xy;
-    float2 x1 = InputRT[int2(idxs.x, idxs.y + N * 0.5f)].xy;
+    float2 x1 = InputRT[int3(idxs.x, idxs.y + N * 0.5f, idxs.z)].xy;
 
     float2 output = x0 + float2(w.x * x1.x - w.y * x1.y, w.x * x1.y + w.y * x1.x);
-    OutputRT[id.xy] = output;
+    OutputRT[id.xyz] = output;
+}
+
+//深度FFT计算
+THE_THREDS
+void FFTDepth(uint3 id : SV_DispatchThreadID)
+{
+    int3 idxs = id.xyz;
+    idxs.z = ((id.z >> FFTPass) << (FFTPass - 1)) + (id.z & (Ns - 1));
+    float angle = -2.0f * PI * (id.z / (Ns * 2.0f));
+    float2 w = float2(cos(angle), sin(angle));
+
+    float2 x0 = InputRT[idxs].xy;
+    float2 x1 = InputRT[int3(idxs.x, idxs.y, idxs.z + N * 0.5f)].xy;
+
+    float2 output = x0 + float2(w.x * x1.x - w.y * x1.y, w.x * x1.y + w.y * x1.x);
+    OutputRT[id.xyz] = output;
 }
 
 
 
 //横向FFT计算,只针对第m-1阶段，最后一阶段需要特殊处理
-[numthreads(8, 8, 1)]
+THE_THREDS
 void IFFTHorizontal(uint3 id : SV_DispatchThreadID)
 {
-    int2 idxs = id.xy;
+    int3 idxs = id.xyz;
     // 原来的实现是 Ns = pow(2, FFTPass - 1);
     // idxs.x = (id.x / (Ns * 2)) * Ns + id.x % Ns
     // 这个算法魔法般的计算出了 Butterfly 操作中需要用到的点
@@ -121,82 +174,111 @@ void IFFTHorizontal(uint3 id : SV_DispatchThreadID)
     float2 w = float2(cos(angle), sin(angle));
 
     float2 x0 = InputRT[idxs].xy;
-    float2 x1 = InputRT[int2(idxs.x + N * 0.5f, idxs.y)].xy;
+    float2 x1 = InputRT[int3(idxs.x + N * 0.5f, idxs.y, idxs.z)].xy;
 
     float2 output = x0 + float2(w.x * x1.x - w.y * x1.y, w.x * x1.y + w.y * x1.x);
     
-    OutputRT[id.xy] = output;
+    OutputRT[id.xyz] = output;
 }
 
 
 //横向FFT最后阶段计算,需要进行特别处理
-[numthreads(8, 8, 1)]
+THE_THREDS
 void IFFTHorizontalEnd(uint3 id : SV_DispatchThreadID)
 {
-    int2 idxs = id.xy;
+    int3 idxs = id.xyz;
     idxs.x = ((id.x >> FFTPass) << (FFTPass - 1)) + (id.x & (Ns - 1));
     float angle = 2.0f * PI * (id.x / (Ns * 2.0f));
     float2 w = float2(cos(angle), sin(angle));
 
     float2 x0 = InputRT[idxs].xy;
-    float2 x1 = InputRT[int2(idxs.x + N * 0.5f, idxs.y)].xy;
+    float2 x1 = InputRT[int3(idxs.x + N * 0.5f, idxs.y, idxs.z)].xy;
 
     float2 output = x0 + float2(w.x * x1.x - w.y * x1.y, w.x * x1.y + w.y * x1.x);
     
     output.y = -output.y;
     output /= N;
-    OutputRT[id.xy] = output;
+    OutputRT[id.xyz] = output;
 }
 
 
 //纵向FFT计算,只针对第m-1阶段，最后一阶段需要特殊处理
-[numthreads(8, 8, 1)]
+THE_THREDS
 void IFFTVertical(uint3 id : SV_DispatchThreadID)
 {
-    int2 idxs = id.xy;
-    // 原来的实现是 Ns = pow(2, FFTPass - 1);
-    // idxs.x = (id.x / (Ns * 2)) * Ns + id.x % Ns
-    // 这个算法魔法般的计算出了 Butterfly 操作中需要用到的点
-    // 这个算法把 Index 中第 FFTPass 位去掉了 (从低位从1开始算起)
+    int3 idxs = id.xyz;
     idxs.y = ((id.y >> FFTPass) << (FFTPass - 1)) + (id.y & (Ns - 1));
     float angle = 2.0f * PI * (id.y / (Ns * 2.0f));
     float2 w = float2(cos(angle), sin(angle));
 
     float2 x0 = InputRT[idxs].xy;
-    float2 x1 = InputRT[int2(idxs.x, idxs.y + N * 0.5f)].xy;
+    float2 x1 = InputRT[int3(idxs.x, idxs.y + N * 0.5f, idxs.z)].xy;
 
     float2 output = x0 + float2(w.x * x1.x - w.y * x1.y, w.x * x1.y + w.y * x1.x);
 
-    OutputRT[id.xy] = output;
+    OutputRT[id.xyz] = output;
 }
+
+
 //纵向FFT最后阶段计算,需要进行特别处理
-[numthreads(8, 8, 1)]
+THE_THREDS
 void IFFTVerticalEnd(uint3 id : SV_DispatchThreadID)
 {
-    int2 idxs = id.xy;
-    // 原来的实现是 Ns = pow(2, FFTPass - 1);
-    // idxs.x = (id.x / (Ns * 2)) * Ns + id.x % Ns
-    // 这个算法魔法般的计算出了 Butterfly 操作中需要用到的点
-    // 这个算法把 Index 中第 FFTPass 位去掉了 (从低位从1开始算起)
+    int3 idxs = id.xyz;
     idxs.y = ((id.y >> FFTPass) << (FFTPass - 1)) + (id.y & (Ns - 1));
     float angle = 2.0f * PI * (id.y / (Ns * 2.0f));
     float2 w = float2(cos(angle), sin(angle));
 
     float2 x0 = InputRT[idxs].xy;
-    float2 x1 = InputRT[int2(idxs.x, idxs.y + N * 0.5f)].xy;
+    float2 x1 = InputRT[int3(idxs.x, idxs.y + N * 0.5f, idxs.z)].xy;
 
     float2 output = x0 + float2(w.x * x1.x - w.y * x1.y, w.x * x1.y + w.y * x1.x);
     
     output.y = -output.y;
     output /= N;
-    OutputRT[id.xy] = output;
+    OutputRT[id.xyz] = output;
 }
 
-[numthreads(8, 8, 1)]
-void IFFTFlip(uint3 id : SV_DispatchThreadID)
+THE_THREDS
+void IFFTDepth(uint3 id : SV_DispatchThreadID)
 {
-    float2 output = InputRT[id.xy];
+    int3 idxs = id.xyz;
+    idxs.z = ((id.z >> FFTPass) << (FFTPass - 1)) + (id.z & (Ns - 1));
+    float angle = 2.0f * PI * (id.y / (Ns * 2.0f));
+    float2 w = float2(cos(angle), sin(angle));
+
+    float2 x0 = InputRT[idxs].xy;
+    float2 x1 = InputRT[int3(idxs.x, idxs.y, idxs.z + N * 0.5f)].xy;
+
+    float2 output = x0 + float2(w.x * x1.x - w.y * x1.y, w.x * x1.y + w.y * x1.x);
+
+    OutputRT[id.xyz] = output;
+}
+
+//深度FFT最后阶段计算,需要进行特别处理
+THE_THREDS
+void IFFTDepthEnd(uint3 id : SV_DispatchThreadID)
+{
+    int3 idxs = id.xyz;
+    idxs.y = ((id.y >> FFTPass) << (FFTPass - 1)) + (id.y & (Ns - 1));
+    float angle = 2.0f * PI * (id.y / (Ns * 2.0f));
+    float2 w = float2(cos(angle), sin(angle));
+
+    float2 x0 = InputRT[idxs].xy;
+    float2 x1 = InputRT[int3(idxs.x, idxs.y, idxs.z + N * 0.5f)].xy;
+
+    float2 output = x0 + float2(w.x * x1.x - w.y * x1.y, w.x * x1.y + w.y * x1.x);
+    
     output.y = -output.y;
     output /= N;
-    OutputRT[id.xy] = output;
+    OutputRT[id.xyz] = output;
+}
+
+THE_THREDS
+void IFFTFlip(uint3 id : SV_DispatchThreadID)
+{
+    float2 output = InputRT[id.xyz];
+    output.y = -output.y;
+    output /= N;
+    OutputRT[id.xyz] = output;
 }
