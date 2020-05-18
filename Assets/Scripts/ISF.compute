@@ -36,14 +36,14 @@ inline float2 complexMul(float2 a, float2 b)
 
 // 初始化预计算的 薛定谔 & 泊松在频域上的乘子
 THE_THREDS
-void InitBuffer(uint3 id : SV_DispatchThreadID)
+void InitBuffer(int3 id : SV_DispatchThreadID)
 {
     // 薛定谔在频域上时间上积分的乘子
     {
-        float3 k = (id.xyz - (res >> 1)) / size;
+        float3 k = (float3(id) - (res >> 1)) / size;
         float fac = -4 * PI * PI * hbar;
         float lambda = fac * dot(k, k);
-        float intern = lambda * dt / 2;
+        float intern = lambda * dt / 2.0f;
         SchroedingerMul[id.xyz] = float2(cos(intern), sin(intern));
     }
     
@@ -55,7 +55,7 @@ void InitBuffer(uint3 id : SV_DispatchThreadID)
         float res = -0.25 / denom;
         int is_zero = id.x | id.y | id.z;
         // 虽然分支效率很低, 但是这个只要模拟开始的时候执行一次就行了
-        if (is_zero)
+        if (!is_zero)
         {
             res = 0;
         }
@@ -126,9 +126,10 @@ void ComputeDivergence(int3 id : SV_DispatchThreadID)
     float3 divergence = float3(form_x, form_y, form_z);
     divergence /= grid_sz;
     
+    float realpart = divergence.x + divergence.y + divergence.z;
     // 虚部为 0
     Divergence[id] = float2(
-        divergence.x + divergence.y + divergence.z,
+        realpart,
         0
     );
 }
@@ -147,8 +148,8 @@ THE_THREDS
 void GaugeTransform(int3 id: SV_DispatchThreadID)
 {
     float2 q = float2(
-    Divergence[id].y,
-    -Divergence[id].x
+    cos(-Divergence[id].x),
+    sin(-Divergence[id].x)
     );
     
     
@@ -160,7 +161,7 @@ void GaugeTransform(int3 id: SV_DispatchThreadID)
 THE_THREDS
 void Normalize(int3 id : SV_DispatchThreadID)
 {
-    float norm = dot(Psi1[id], Psi1[id])+ dot(Psi2[id], Psi2[id]);
+    float norm = sqrt(dot(Psi1[id], Psi1[id]) + dot(Psi2[id], Psi2[id]));
     Psi1[id] /= norm;
     Psi2[id] /= norm;
 }

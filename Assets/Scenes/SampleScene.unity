@@ -358,4 +358,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   fft: {fileID: 1570121832}
-  ISFCS: {fileID: 0}
+  ISFCS: {fileID: 7200000, guid: 21a9332914fde2d489d76f47dc5c84b1, type: 3}

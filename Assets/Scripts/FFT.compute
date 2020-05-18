@@ -22,6 +22,8 @@
 #pragma kernel BlitDebugOutput
 #pragma kernel BlitIOTex
 #pragma kernel BlitSliceOf3DTexture
+#pragma kernel BlitSliceOf3DTextureFloat4
+#pragma kernel BlitSliceOf3DTextureFloat1
 
 #define PI 3.1415926535898
 #define THREADS 8
@@ -38,7 +40,8 @@ Texture3D<float2> InputTex;
 
 RWTexture2D<float4> DebugOutput;
 
-
+RWTexture3D<float> InputFloat1RT;
+RWTexture3D<float4> InputFloat4RT;
 RWTexture2D<float4> Sliced;
 int layer;
 
@@ -61,6 +64,19 @@ void BlitSliceOf3DTexture(int3 id: SV_DispatchThreadID)
     Sliced[id.xy] = float4(InputRT[pos].xy, 0, 0);
 }
 
+[numthreads(THREADS, THREADS, 1)]
+void BlitSliceOf3DTextureFloat4(int3 id : SV_DispatchThreadID)
+{
+    int3 pos = int3(id.xy, layer);
+    Sliced[id.xy] = InputFloat4RT[pos];
+}
+
+[numthreads(THREADS, THREADS, 1)]
+void BlitSliceOf3DTextureFloat1(int3 id : SV_DispatchThreadID)
+{
+    int3 pos = int3(id.xy, layer);
+    Sliced[id.xy] = float4(InputFloat1RT[pos], 0, 0, 0);
+}
 
 [numthreads(THREADS, THREADS, 1)]
 void BlitDebugOutput(int3 id : SV_DispatchThreadID)
@@ -84,6 +100,9 @@ void BlitIOTex(int3 id : SV_DispatchThreadID)
 
 // FFT & IFF 3D 版本
 // ==========================================
+// FFTPass: 1 ~ log2(N)
+// Ns: 2^(FFTPass-1)
+// InputRT, OutputRT
 inline float2 complexMul(float2 a, float2 b)
 {
     return float2(
