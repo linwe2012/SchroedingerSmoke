@@ -34,6 +34,7 @@
 int N;
 int FFTPass;
 int Ns;
+
 RWTexture3D<float2> InputRT;
 RWTexture3D<float2> OutputRT;
 Texture3D<float2> InputTex;
@@ -368,5 +369,6 @@ void FFTShift(int3 id: SV_DispatchThreadID)
     
     // OutputRT[id] = float2(shift.x, shift.y); //InputRT[id + shift];
     OutputRT[id] = InputRT[id + shift];
+
 
 }

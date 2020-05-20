@@ -86,6 +86,15 @@ public class FFT : MonoBehaviour
         return rt;
     }
 
+    static public RenderTexture CreateRenderTexture1D(int size, RenderTextureFormat type = RenderTextureFormat.ARGBFloat)
+    {
+        RenderTexture rt = new RenderTexture(size, 1, 0, type);
+        rt.enableRandomWrite = true;
+        // rt.useMipMap = false;
+        rt.Create();
+        return rt;
+    }
+
     static public RenderTexture CreateRenderTexture3D(int width, int height, int volumn, RenderTextureFormat type = RenderTextureFormat.ARGBFloat)
     {
         RenderTexture rt = new RenderTexture(width, height, 0, type);
@@ -486,13 +495,9 @@ public class FFT : MonoBehaviour
         ExportArray(t, TextureFormat.RGBAFloat, 2, filename);
     }
 
-    public void ExportFloat4_3D(RenderTexture t, string filename)
-    {
-        var width = t.width;
-        var heigh = t.height;
-        var depth = t.volumeDepth;
 
-        var colors = ReadRenderTextureRaw(t, TextureFormat.RGBAFloat);
+    void ExportColorAsFloat4(float[] colors, string filename, int width, int heigh, int depth)
+    {
         var index = 0;
 
         Float4Type ipt;
@@ -500,13 +505,6 @@ public class FFT : MonoBehaviour
         ipt.data.f2 = new float[depth, heigh, width];
         ipt.data.f3 = new float[depth, heigh, width];
         ipt.data.f4 = new float[depth, heigh, width];
-
-        //for(var ch = 0;  ch < channels; ++ch)
-        //{
-        // System.Func<Color, float> get_con = (Color color) => color.a;
-        // if (ch == 0) get_con = (Color color) => color.r;
-        // if (ch == 1) get_con = (Color color) => color.g;
-        // if (ch == 2) get_con = (Color color) => color.b;
 
         for (int k = 0; k < depth; ++k)
         {
@@ -531,6 +529,26 @@ public class FFT : MonoBehaviour
 
         var chh = Newtonsoft.Json.JsonConvert.SerializeObject(ipt);
         File.WriteAllText(filename, chh);
+    }
+
+    public void ExportFloat4_3D(ComputeBuffer c, string filename)
+    {
+        float[] color = new float[c.count * 4];
+        c.GetData(color);
+
+        ExportColorAsFloat4(color, filename, c.count, 1, 1);
+    }
+
+    public void ExportFloat4_3D(RenderTexture t, string filename)
+    {
+        var width = t.width;
+        var heigh = t.height;
+        var depth = t.volumeDepth;
+
+        var colors = ReadRenderTextureRaw(t, TextureFormat.RGBAFloat);
+
+
+        ExportColorAsFloat4(colors, filename, width, heigh, depth);
     }
 
     public void ExportFloat1_3D(RenderTexture t, string filename)

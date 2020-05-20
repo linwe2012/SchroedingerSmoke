@@ -8,7 +8,13 @@
 #pragma kernel PossionSpectral
 #pragma kernel GaugeTransform
 
+#pragma kernel InitializePsi
+#pragma kernel ReprojectVelocityToGrid
+
 #define THE_THREDS [numthreads(8, 8, 8)]
+
+// 为小型的任务分配的线程数量
+#define MINI_THREADS [numthreads(8, 8, 8)]
 #define PI 3.1415926535898
 
 // Create a RenderTexture with enableRandomWrite flag and set it
@@ -19,6 +25,20 @@ RWTexture3D<float2> Psi1;
 RWTexture3D<float2> Psi2;
 RWTexture3D<float4> Velocity;
 RWTexture3D<float2> Divergence;
+
+RWTexture3D<float> Nozzle;
+RWTexture3D<float4> DebugOutput;
+
+// 在 nozzle mask 中的 center
+float3 nozzle_ralative_center;
+// 相对整个三维网格的 center
+float3 nozzle_center;
+float nozzle_radius;
+float3 nozzle_dir;
+float3 nozzle_topleft;
+float nozzle_length;
+float3 nozzle_velocity;
+float omega_t;
 
 float3 size; // 空间上的大小
 uint3 res;    // 空间上网格的分割数量
@@ -165,3 +185,27 @@ void Normalize(int3 id : SV_DispatchThreadID)
     Psi1[id] /= norm;
     Psi2[id] /= norm;
 }
+
+
+THE_THREDS
+void InitializePsi(int3 id : SV_DispatchThreadID)
+{
+    Psi1[id] = float2(1, 0);
+    Psi2[id] = float2(0.01, 0);
+    
+    float norm = sqrt(dot(Psi1[id], Psi1[id]) + dot(Psi2[id], Psi2[id]));
+    Psi1[id] /= norm;
+    Psi2[id] /= norm;
+}
+
+THE_THREDS
+void ReprojectVelocityToGrid(int3 id : SV_DispatchThreadID)
+{
+    float3 v = Velocity[id].xyz;
+    
+    v /= size / res;
+    Velocity[id] = float4(v, 0);
+
+}
+
+

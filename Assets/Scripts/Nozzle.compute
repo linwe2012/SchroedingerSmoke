@@ -1,0 +1,164 @@
+﻿// Debug 专用
+#pragma kernel ZeroOutDebugOutput
+#pragma kernel BlitDebugMask
+
+#pragma kernel CreateNozzleMask
+#pragma kernel NozzleUpdatePsi
+
+#pragma kernel NozzleClamp
+#pragma kernel InitNozzle
+
+#define THE_THREDS [numthreads(8, 8, 8)]
+#define MINI_THREADS [numthreads(8, 8, 8)]
+#define LINE_THREADS [numthreads(1024, 1, 1)]
+
+
+
+RWTexture3D<float2> Psi1;
+RWTexture3D<float2> Psi2;
+
+RWTexture3D<float> Nozzle;
+RWTexture3D<float4> DebugOutput;
+
+RWStructuredBuffer<float4> ParticlePostion;
+
+// RWTexture1D<float4> ParticlePostion;
+
+// 在 nozzle mask 中的 center
+float3 nozzle_ralative_center;
+// 相对整个三维网格的 center
+float3 nozzle_center;
+float nozzle_radius;
+float3 nozzle_dir;
+float3 nozzle_topleft;
+float nozzle_length;
+float3 nozzle_velocity;
+float omega_t;
+
+float3 nozzle_right;
+float3 nozzle_up;
+
+float3 size; // 空间上的大小
+uint3 res; // 空间上网格的分割数量
+int3 grids;
+
+// http://www.reedbeta.com/blog/quick-and-easy-gpu-random-numbers-in-d3d11/
+
+uint rng_state;
+
+uint rand_lcg()
+{
+    // LCG values from Numerical Recipes
+    rng_state = 1664525 * rng_state + 1013904223;
+    return rng_state;
+}
+
+uint rand_xorshift()
+{
+    // Xorshift algorithm from George Marsaglia's paper
+    rng_state ^= (rng_state << 13);
+    rng_state ^= (rng_state >> 17);
+    rng_state ^= (rng_state << 5);
+    return rng_state;
+}
+
+float randf()
+{
+    return float(rand_xorshift()) * (1.0 / 94967296.0);
+}
+
+
+// https://blog.csdn.net/menjiawan/article/details/43021507
+float4 GetRandomPosOnNozzle()
+{
+    float t = randf();
+    
+    float3 r = nozzle_up * cos(t) + nozzle_right * sin(t);
+    r *= nozzle_radius;
+    
+    return float4(r + nozzle_center, 0);
+}
+
+
+// Nozzle
+// nozzle_ralative_center, 
+// nozzle_length, nozzle_radius
+// nozzle_dir, nozzle_right
+MINI_THREADS
+void CreateNozzleMask(int3 id : SV_DispatchThreadID)
+{
+    float3 vec = id - nozzle_ralative_center;
+    float dir = dot(nozzle_dir, vec);
+    float3 m = vec - dir * nozzle_dir;
+    if (abs(dir) < nozzle_length / 2)
+    {
+        if (length(m) <= nozzle_radius)
+        {
+            Nozzle[id] = 1;
+        }
+        else
+        {
+            Nozzle[id] = 0;
+        }
+    }
+    else
+    {
+        Nozzle[id] = 0;
+    }
+}
+
+MINI_THREADS
+void NozzleUpdatePsi(int3 id : SV_DispatchThreadID)
+{
+    if (Nozzle[id] == 0)
+        return;
+    
+    int3 pos = id + nozzle_topleft;
+    float3 phase_v = nozzle_velocity * float3(pos) * size / float3(res);
+    float phase = phase_v.x + phase_v.y + phase_v.z - omega_t;
+    float amp1 = length(Psi1[pos]);
+    float amp2 = length(Psi2[pos]);
+    
+    float2 phase_c = float2(cos(phase), sin(phase));
+
+    Psi1[pos] = amp1 * phase_c;
+    Psi2[pos] = amp2 * phase_c;
+}
+
+
+
+// Debugs
+// =========================================
+THE_THREDS
+void ZeroOutDebugOutput(int3 id : SV_DispatchThreadID)
+{
+    DebugOutput[id] = 0;
+}
+
+MINI_THREADS
+void BlitDebugMask(int3 id : SV_DispatchThreadID)
+{
+    int3 pos = id + nozzle_topleft;
+    DebugOutput[pos] = Nozzle[id];
+}
+
+
+
+THE_THREDS
+void NozzleClamp(uint3 id : SV_DispatchThreadID)
+{
+    float4 pos = ParticlePostion[id.x];
+    int4 ir = floor(pos);
+    
+    if (ir.x < 0 || ir.y < 0 || ir.z < 0 || ir.x >= grids.x || ir.y >= grids.y || ir.z >= grids.z)
+    {
+        ParticlePostion[id.x] = GetRandomPosOnNozzle();
+    }
+}
+
+LINE_THREADS
+void InitNozzle(uint3 id : SV_DispatchThreadID)
+{
+    ParticlePostion[id.x] = GetRandomPosOnNozzle();
+}
+

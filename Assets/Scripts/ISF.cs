@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-using System.Diagnostics;
-
 public class ISF : MonoBehaviour
 {
     public FFT fft;
@@ -14,6 +12,7 @@ public class ISF : MonoBehaviour
     RenderTexture Velocity;
     RenderTexture Divergence;
     RenderTexture TempRT;
+    
 
     int kernelInitBuffer;
     int kernelShoedinger;
@@ -22,36 +21,39 @@ public class ISF : MonoBehaviour
     int kernelComputeDivergence;
     int kernelPossionSpectral;
     int kernelGaugeTransform;
-
-
-    int N = 16;
-
-    Vector3 size = new Vector3(2, 2, 2);
-    float hbar = 0.1f;
-    float estimate_dt = 1f / 30f;
-
     
+    int kernelInitializePsi;
+    int kernelReprojectVelocityToGrid;
 
-    
+    public int N = 32;
 
-    // Start is called before the first frame update
-    void Start()
+    public Vector3 size = new Vector3(2, 2, 2);
+    public float hbar = 0.1f;
+    public float estimate_dt = 1f / 30f;
+    public int current_tick = 0;
+
+    public Vector3 GetGridSize()
     {
-        fft.init();
-        fft.myRunTest();
-
-        InitComputeShader();
-        InitISF();
-
-        MyRunTest();
+        return size / N;
     }
 
-    void DispatchISFCS(int kernel)
+    public int[] GetGrids()
+    {
+        int[] n = { N, N, N };
+        return n;
+    }
+
+    public RenderTexture GetVelocity()
+    {
+        return Velocity;
+    }
+
+    public void DispatchISFCS(int kernel, bool is_mini_threads = false)
     {
         ISFCS.Dispatch(kernel, N / 8, N / 8, N / 8);
     }
 
-    void InitComputeShader()
+    public void InitComputeShader()
     {
         kernelInitBuffer = ISFCS.FindKernel("InitBuffer");
         kernelShoedinger = ISFCS.FindKernel("Shoedinger");
@@ -61,9 +63,13 @@ public class ISF : MonoBehaviour
         kernelComputeDivergence = ISFCS.FindKernel("ComputeDivergence");
         kernelPossionSpectral = ISFCS.FindKernel("PossionSpectral");
         kernelGaugeTransform = ISFCS.FindKernel("GaugeTransform");
+
+        kernelInitializePsi = ISFCS.FindKernel("InitializePsi");
+        kernelReprojectVelocityToGrid = ISFCS.FindKernel("ReprojectVelocityToGrid");
     }
 
-    void InitISF()
+
+    public void InitISF()
     {
         int[] res = { N, N, N };
 
@@ -88,7 +94,7 @@ public class ISF : MonoBehaviour
         fft.fftshift(ref SchroedingerMul, ref TempRT);
     }
 
-    void ShroedingerIntegration(ref RenderTexture psi1, ref RenderTexture psi2)
+    public void ShroedingerIntegration(ref RenderTexture psi1, ref RenderTexture psi2)
     {
         fft.fft(ref psi1, ref TempRT);
         fft.fft(ref psi2, ref TempRT);
@@ -104,16 +110,16 @@ public class ISF : MonoBehaviour
         fft.ifft(ref psi2, ref TempRT);
     }
 
-    void Normalize(ref RenderTexture psi1, ref RenderTexture psi2)
+    public void Normalize(ref RenderTexture psi1, ref RenderTexture psi2)
     {
         ISFCS.SetTexture(kernelNormalize, "Psi1", psi1);
         ISFCS.SetTexture(kernelNormalize, "Psi2", psi2);
         DispatchISFCS(kernelNormalize);
     }
 
-    void PressureProject(ref RenderTexture psi1, ref RenderTexture psi2)
+    public void VelocityOneForm(ref RenderTexture psi1, ref RenderTexture psi2, float new_hbar = 1)
     {
-        ISFCS.SetFloat("hbar", 1);
+        ISFCS.SetFloat("hbar", new_hbar);
         // 首先计算 Oneform
         ISFCS.SetTexture(kernelVelocityOneForm, "Psi1", psi1);
         ISFCS.SetTexture(kernelVelocityOneForm, "Psi2", psi2);
@@ -121,6 +127,11 @@ public class ISF : MonoBehaviour
         DispatchISFCS(kernelVelocityOneForm);
 
         ISFCS.SetFloat("hbar", hbar);
+    }
+
+    public void PressureProject(ref RenderTexture psi1, ref RenderTexture psi2)
+    {
+        VelocityOneForm(ref psi1, ref psi2);
         // fft.ExportFloat4_3D(Velocity, "test/isf.velo.json");
 
         // 计算散度
@@ -150,8 +161,16 @@ public class ISF : MonoBehaviour
         DispatchISFCS(kernelGaugeTransform);
     }
 
-    void MyRunTest()
+    public void ReprojectToGrid()
     {
+        ISFCS.SetTexture(kernelReprojectVelocityToGrid, "Velocity", Velocity);
+        DispatchISFCS(kernelReprojectVelocityToGrid);
+    }
+
+    public void MyRunTest()
+    {
+        // ISF 基础函数测试
+        // ======================
         Texture3D tex_psi1;
         Texture3D tex_psi2;
 
@@ -178,13 +197,13 @@ public class ISF : MonoBehaviour
 
         fft.ExportArray(psi1, TextureFormat.RGBAFloat, 2, "test/isf.pre.ps1.json");
         fft.ExportArray(psi2, TextureFormat.RGBAFloat, 2, "test/isf.pre.ps2.json");
-
-        
     }
 
-    // Update is called once per frame
-    void Update()
+    public void InitializePsi(ref RenderTexture psi1, ref RenderTexture psi2)
     {
-        
+        ISFCS.SetTexture(kernelInitializePsi, "Psi1", psi1);
+        ISFCS.SetTexture(kernelInitializePsi, "Psi2", psi2);
+
+        DispatchISFCS(kernelInitializePsi);
     }
 }

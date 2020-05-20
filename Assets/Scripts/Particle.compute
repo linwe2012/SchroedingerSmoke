@@ -1,0 +1,79 @@
+﻿// Particle System tailored for ISF
+
+#pragma kernel EnumlateParticle
+
+
+RWTexture3D<float4> Velocity;
+RWStructuredBuffer<float4> ParticlePostion;
+float3 grid_size;
+uint3 grids;
+float dt;
+
+#define THE_THREADS [numthreads(1024, 1, 1)]
+
+float3 FetchEstimate(float3 pos)
+{
+    // Grid position
+    uint3 ipos = floor(pos).xyz;
+    
+    float4 v = Velocity[ipos];
+    
+    float3 w = pos.xyz - ipos * grid_size;
+    
+    float x = (1 - w.z) * ((1 - w.y) * v.x + w.y * v.x);
+    float y = (1 - w.z) * ((1 - w.x) * v.y + w.x * v.y);
+    float z = (1 - w.y) * ((1 - w.x) * v.z + w.x * v.z);
+    
+    x += w.z * ((1 - w.y) * v.x + w.y * v.x);
+    y += w.z * ((1 - w.x) * v.y + w.y * v.x);
+    z += w.y * ((1 - w.x) * v.z + w.y * v.x);
+
+    return float3(x, y, z);
+}
+
+// RK4 算法
+THE_THREADS
+void EnumlateParticle (uint3 id : SV_DispatchThreadID)
+{
+    float4 pos = ParticlePostion[id.x];
+    
+    float3 k1 = FetchEstimate(pos.xyz);
+    float3 k2 = FetchEstimate(pos.xyz + k1 * dt / 2);
+    float3 k3 = FetchEstimate(pos.xyz + k2 * dt / 2);
+    float3 k4 = FetchEstimate(pos.xyz + k3 * dt);
+    
+    float4 res = pos + float4((k1 + 2 * k2 + 2 * k3 + k4) * dt / 6, 0);
+    
+    ParticlePostion[id.x] = res;
+}
+
+
+
+
+/*
+void FetchVelocity(float4 pos)
+{
+    // Grid position
+    uint3 ipos = floor(pos).xyz;
+    
+    float4 v = Velocity[ipos];
+    
+    float4 vx = Velocity[uint3((ipos.x + 1) % grids.x, ipos.y, ipos.z)];
+    float4 vy = Velocity[uint3(ipos.x, (ipos.y + 1) % grids.y, ipos.z)];
+    float4 vz = Velocity[uint3(ipos.x, ipos.y, (ipos.z + 1) % grids.z)];
+    float4 vyz = float4(vy.x, vy.y, vz.z, 0);
+    
+    float3 w = pos.xyz - ipos * grid_size;
+    
+    float x = (1 - w.z) * ((1 - w.y) * v.x + w.y * vy.x);
+    float y = (1 - w.z) * ((1 - w.x) * v.y + w.x * vx.y);
+    float z = (1 - w.y) * ((1 - w.x) * v.z + w.x * vx.z);
+    
+    x += w.z * ((1 - w.y) * vz.x + w.y * v.x);
+    y += w.z * ((1 - w.x) * vz.y + w.y * v.x);
+    z += w.y * ((1 - w.x) * vy.z + w.y * v.x);
+
+}
+
+*/
+
