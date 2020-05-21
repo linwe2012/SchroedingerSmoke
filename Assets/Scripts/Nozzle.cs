@@ -231,6 +231,7 @@ public class Nozzle : MonoBehaviour
 
     void ClampParticles()
     {
+        
         foreach(var part in particles.AllCurrentParticles())
         {
             int kernel = kernelNozzleClamp[part.kernId];
@@ -238,6 +239,7 @@ public class Nozzle : MonoBehaviour
             CS.SetBuffer(kernel, "ParticlePostion", part.buf);
             CS.Dispatch(kernel, part.count / part.threads, 1, 1);
         }
+        
     }
 
     void PrepareNozzle()

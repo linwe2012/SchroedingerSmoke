@@ -1,4 +1,6 @@
-﻿// 参考了: https://yumayanagisawa.com/2017/11/21/unity-compute-shader-particle-system/
+﻿// Upgrade NOTE: replaced '_Object2World' with 'unity_ObjectToWorld'
+
+// 参考了: https://yumayanagisawa.com/2017/11/21/unity-compute-shader-particle-system/
 // 主要使用了代码框架, 内容完全重写
 
 Shader "Unlit/ISFParticle" {
@@ -9,9 +11,10 @@ Shader "Unlit/ISFParticle" {
     }
         SubShader{
             Pass {
-            Tags{ "RenderType" = "Transparent" "Queue" = "Transparent" }
+            Tags{ "RenderType" = "Transparent" "Queue" = "Transparent" "IgnoreProjector" = "True"}
             Blend SrcAlpha OneMinusSrcAlpha
             Cull Off
+            ZWrite Off
             //Tags{ "RenderType" = "Opaque" }
             LOD 200
 
@@ -33,24 +36,37 @@ Shader "Unlit/ISFParticle" {
 
         struct PS_INPUT {
             float4 position : SV_POSITION;
+            float3 worldNormal : TEXCOORD0;
+            float3 worldPos : TEXCOORD1;
+        };
+
+        struct VS_INPUT {
+            float4 position : POSITION;
+            float3 normal: NORMAL;
+            float4 texcoord0 : TEXCOORD0;
         };
         // particles' data
         StructuredBuffer<Particle> particleBuffer;
 
 
-        PS_INPUT vert(uint vertex_id : SV_VertexID, uint instance_id : SV_InstanceID)
+        PS_INPUT vert(VS_INPUT ipt, uint vertex_id : SV_VertexID, uint instance_id : SV_InstanceID)
         {
             PS_INPUT o;
 
             // Position
-            o.position = UnityObjectToClipPos(float4(particleBuffer[instance_id].position.xyz * _Scale.xyz, 1));
-
+            float3 pos = particleBuffer[instance_id].position.xyz * _Scale.xyz + ipt.position.xyz;
+            o.position = UnityObjectToClipPos(float4(pos, 1));
+            o.worldNormal = UnityObjectToWorldNormal(ipt.normal);
+            o.worldPos = mul(unity_ObjectToWorld, pos).xyz;
             return o;
         }
 
         float4 frag(PS_INPUT i) : COLOR
         {
-            return float4(0.6, 0.6, 0.65, 0.4);
+            float3 viewDir = normalize(UnityWorldSpaceViewDir(i.worldPos));
+            float scale = dot(-viewDir, i.worldNormal);
+            // scale = lerp(0.3, 0.8, scale);
+            return float4(0.99, 0.99, 1.0, 0.2);
         }
 
 

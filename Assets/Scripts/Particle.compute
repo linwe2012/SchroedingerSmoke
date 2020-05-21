@@ -38,6 +38,7 @@ float3 FetchEstimate(float3 pos)
 THE_THREADS
 void EnumlateParticle (uint3 id : SV_DispatchThreadID)
 {
+    
     float4 pos = ParticlePostion[id.x];
     
     float3 k1 = FetchEstimate(pos.xyz);
@@ -46,13 +47,18 @@ void EnumlateParticle (uint3 id : SV_DispatchThreadID)
     float3 k4 = FetchEstimate(pos.xyz + k3 * dt);
     
     float4 res = pos + float4((k1 + 2 * k2 + 2 * k3 + k4) * dt / 6, 0);
+
     
     ParticlePostion[id.x] = res;
+
+    //pos.x += 0.01;
+    //ParticlePostion[id.x] = pos;
 }
 
 THE_THREADS_256
 void EnumlateParticle256(uint3 id : SV_DispatchThreadID)
 {
+    
     float4 pos = ParticlePostion[id.x];
     
     float3 k1 = FetchEstimate(pos.xyz);
@@ -63,11 +69,16 @@ void EnumlateParticle256(uint3 id : SV_DispatchThreadID)
     float4 res = pos + float4((k1 + 2 * k2 + 2 * k3 + k4) * dt / 6, 0);
     
     ParticlePostion[id.x] = res;
+    
+    
+    //pos.x += 0.01;
+    //ParticlePostion[id.x] = pos;
 }
 
 THE_THREADS_64
 void EnumlateParticle64(uint3 id : SV_DispatchThreadID)
 {
+    
     float4 pos = ParticlePostion[id.x];
     
     float3 k1 = FetchEstimate(pos.xyz);
@@ -78,6 +89,9 @@ void EnumlateParticle64(uint3 id : SV_DispatchThreadID)
     float4 res = pos + float4((k1 + 2 * k2 + 2 * k3 + k4) * dt / 6, 0);
     
     ParticlePostion[id.x] = res;
+
+    //pos.x += 0.01;
+    //ParticlePostion[id.x] = pos;
 }
 
 /*

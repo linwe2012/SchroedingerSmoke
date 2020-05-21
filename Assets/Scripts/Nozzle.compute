@@ -84,11 +84,16 @@ float4 GetRandomPosOnNozzle(uint seed)
 {
     
     float t = randf(seed);
+    uint s2 = wang_hash(seed);
+    uint s3= wang_hash(s2);
+    float disrtube = randf(s2) * 0.01;
+    float disrtube2 = randf(s3) * 0.01;
+    float disrtube3 = randf(wang_hash(s3)) * 0.01;
     
-    float3 r = nozzle_up * cos(t) + nozzle_right * sin(t);
+    float3 r = (nozzle_up * cos(t) + disrtube) + (nozzle_right * sin(t) + disrtube2);
     r *= nozzle_radius * 0.9;
     r += nozzle_center;
-    
+    r += (disrtube3 - 0.03) * nozzle_dir * 0.03;
     return float4(r, 0);
 }
 
@@ -160,6 +165,7 @@ void BlitDebugMask(int3 id : SV_DispatchThreadID)
 LINE_THREADS
 void NozzleClamp(uint3 id : SV_DispatchThreadID)
 {
+    
     float4 pos = ParticlePostion[id.x];
     int4 ir = floor(pos);
     
@@ -167,6 +173,7 @@ void NozzleClamp(uint3 id : SV_DispatchThreadID)
     {
         ParticlePostion[id.x] = GetRandomPosOnNozzle(id.x);
     }
+
 }
 
 
