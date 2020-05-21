@@ -184,7 +184,7 @@ public class Nozzle : MonoBehaviour
         var psi2 = fft.LoadJson3D("test/psi2.json", out tex_psi2);
 
         UpdateNozzles();
-        fft.ExportFloat1_3D(NozzleRT, "test/isf.nozzle.json");
+        // fft.ExportFloat1_3D(NozzleRT, "test/isf.nozzle.json");
 
         var N = isf.N;
         // Nozzle mask
@@ -272,7 +272,7 @@ public class Nozzle : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        /*
+        
         fft = isf.fft;
         fft.init();
         fft.myRunTest();
@@ -283,7 +283,7 @@ public class Nozzle : MonoBehaviour
 
         InitComputeShader();
         RunMyTest();
-        */
+        
 
         PrepareNozzle();
     }
