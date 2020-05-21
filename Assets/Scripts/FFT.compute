@@ -45,6 +45,10 @@ RWTexture2D<float4> DebugOutput;
 RWTexture3D<float> InputFloat1RT;
 RWTexture3D<float4> InputFloat4RT;
 RWTexture2D<float4> Sliced;
+
+Texture1D<float4> InputTexFloat4;
+RWStructuredBuffer<float4> ComputeBuffer;
+
 int layer;
 
 
@@ -98,7 +102,11 @@ void BlitIOTex(int3 id : SV_DispatchThreadID)
     OutputRT[id.xyz] = InputTex.Load(int4(id, 0));
 }
 
-
+[numthreads(THREADS, 1, 1)]
+void BlitTexToComputeFloat4(int3 id : SV_DispatchThreadID)
+{
+    ComputeBuffer[id.x] = InputTexFloat4.Load(id.x);
+}
 
 // FFT & IFF 3D 版本
 // ==========================================

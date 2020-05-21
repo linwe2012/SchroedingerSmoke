@@ -483,7 +483,7 @@ public class FFT : MonoBehaviour
         public float[,,] imag;
     };
 
-    struct Float4Array
+    public struct Float4Array
     {
         public float[,,] f1;
         public float[,,] f2;
@@ -491,8 +491,22 @@ public class FFT : MonoBehaviour
         public float[,,] f4;
     }
 
+    public struct Float4Array1D
+    {
+        public float[] f1;
+        public float[] f2;
+        public float[] f3;
+        public float[] f4;
+    }
+
     [System.Serializable]
-    struct Float4Type
+    public struct Float4Type1D
+    {
+        public Float4Array1D data;
+    }
+
+    [System.Serializable]
+    public struct Float4Type
     {
         public Float4Array data;
     }
@@ -544,13 +558,7 @@ public class FFT : MonoBehaviour
         File.WriteAllText(filename, chh);
     }
 
-    public void ExportFloat4_3D(ComputeBuffer c, string filename)
-    {
-        float[] color = new float[c.count * 4];
-        c.GetData(color);
-
-        ExportColorAsFloat4(color, filename, c.count, 1, 1);
-    }
+    
 
     public void ExportFloat4_3D(RenderTexture t, string filename)
     {
@@ -711,6 +719,70 @@ public class FFT : MonoBehaviour
         Debug.Log(input);
     }*/
 
+    public void ExportFloat4(ComputeBuffer c, string filename)
+    {
+        float[] color = new float[c.count * 4];
+        c.GetData(color);
+
+        Float4Type1D ipt;
+        ipt.data.f1 = new float[c.count];
+        ipt.data.f2 = new float[c.count];
+        ipt.data.f3 = new float[c.count];
+        ipt.data.f4 = new float[c.count];
+
+        int index = 0;
+        for (int i = 0; i < c.count; ++i)
+        {
+            ipt.data.f1[i] = color[index];
+            ++index;
+            ipt.data.f2[i] = color[index];
+            ++index;
+            ipt.data.f3[i] = color[index];
+            ++index;
+            ipt.data.f4[i] = color[index];
+            ++index;
+        }
+
+        var chh = Newtonsoft.Json.JsonConvert.SerializeObject(ipt);
+        File.WriteAllText(filename, chh);
+    }
+
+    public ComputeBuffer LoadJson_Float4ComputeBuffer(string filename)
+    {
+        if(!File.Exists(filename))
+        {
+            Debug.LogError("File: " + filename + " not exists");
+        }
+        var txt = File.ReadAllText(filename);
+        var input = Newtonsoft.Json.JsonConvert.DeserializeObject<Float4Type1D>(txt);
+        var d1 = input.data.f1.Length;
+        var d2 = input.data.f2.Length;
+        var d3 = input.data.f3.Length;
+        var d4 = input.data.f3.Length;
+
+        var compute_buffer = new ComputeBuffer(d1, 4 * sizeof(float));
+
+        float[] arr = new float[d1 * 4];
+
+        int index = 0;
+        for(int i = 0; i < d1; ++i)
+        {
+            arr[index] = input.data.f1[i];
+            index++;
+
+            arr[index] = input.data.f2[i];
+            index++;
+
+            arr[index] = input.data.f3[i];
+            index++;
+
+            arr[index] = input.data.f4[i];
+            index++;
+        }
+
+        compute_buffer.SetData(arr);
+        return compute_buffer;
+    }
 
     public RenderTexture LoadJson3D(string filename, out Texture3D text)
     {
@@ -748,7 +820,49 @@ public class FFT : MonoBehaviour
         text = texture;
         return textureIn;
     }
-    
+
+    public RenderTexture LoadJson3D_Float4(string filename, out Texture3D text)
+    {
+        var txt = File.ReadAllText(filename);
+        var input = Newtonsoft.Json.JsonConvert.DeserializeObject<Float4Type>(txt);
+        var depth = input.data.f1.GetLength(0);
+        var height = input.data.f1.GetLength(1);
+        var width = input.data.f1.GetLength(2);
+
+        var textureIn = CreateRenderTexture3D(width, height, depth, RenderTextureFormat.ARGBFloat);
+
+        Texture3D texture = new Texture3D(width, height, depth, TextureFormat.RGBAFloat, false);
+
+        RenderTexture.active = textureIn;
+        var pxdata = texture.GetPixelData<float>(0);
+        int index = 0;
+        for (int k = 0; k < depth; ++k)
+        {
+            for (int i = 0; i < height; i++)
+            {
+                for (int j = 0; j < width; j++)
+                {
+
+                    pxdata[index] = input.data.f1[k, i, j];
+                    ++index;
+                    pxdata[index] = input.data.f2[k, i, j];
+                    ++index;
+                    pxdata[index] = input.data.f3[k, i, j];
+                    ++index;
+                    pxdata[index] = input.data.f4[k, i, j];
+                    ++index;
+
+                }
+            };
+        }
+        texture.Apply(updateMipmaps: false);
+        RenderTexture.active = null;
+        SetN(new Vector3Int(textureIn.width, textureIn.height, textureIn.volumeDepth));
+        Blit3D(texture, textureIn);
+        text = texture;
+        return textureIn;
+    }
+
     public void myRunTest()
     {
         Texture3D texture;

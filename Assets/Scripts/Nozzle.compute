@@ -46,6 +46,7 @@ float3 nozzle_up;
 float3 size; // 空间上的大小
 uint3 res; // 空间上网格的分割数量
 int3 grids;
+float3 grid_size;
 
 // http://www.reedbeta.com/blog/quick-and-easy-gpu-random-numbers-in-d3d11/
 
@@ -76,9 +77,6 @@ float randf(uint rng_seed)
     return float(rand_xorshift(rng_seed)) * (1.0 / 4294967296.0) * 2 * PI;
 }
 
-
-
-
 // https://blog.csdn.net/menjiawan/article/details/43021507
 float4 GetRandomPosOnNozzle(uint seed)
 {
@@ -94,6 +92,7 @@ float4 GetRandomPosOnNozzle(uint seed)
     r *= nozzle_radius * 0.9;
     r += nozzle_center;
     r += (disrtube3 - 0.03) * nozzle_dir * 0.03;
+    r /= size;
     return float4(r, 0);
 }
 
@@ -106,6 +105,7 @@ MINI_THREADS
 void CreateNozzleMask(int3 id : SV_DispatchThreadID)
 {
     float3 vec = id - nozzle_ralative_center;
+    vec *= grid_size;
     float dir = dot(nozzle_dir, vec);
     float3 m = vec - dir * nozzle_dir;
     if (abs(dir) < nozzle_length / 2)
@@ -160,20 +160,21 @@ void BlitDebugMask(int3 id : SV_DispatchThreadID)
     DebugOutput[pos] = Nozzle[id];
 }
 
-
-
-LINE_THREADS
-void NozzleClamp(uint3 id : SV_DispatchThreadID)
+inline void DoClamp(uint3 id)
 {
-    
     float4 pos = ParticlePostion[id.x];
-    int4 ir = floor(pos);
+    int3 ir = floor(pos.xyz / grid_size);
     
     if (ir.x < 0 || ir.y < 0 || ir.z < 0 || ir.x >= grids.x || ir.y >= grids.y || ir.z >= grids.z)
     {
         ParticlePostion[id.x] = GetRandomPosOnNozzle(id.x);
     }
+}
 
+LINE_THREADS
+void NozzleClamp(uint3 id : SV_DispatchThreadID)
+{
+    DoClamp(id);
 }
 
 
@@ -181,25 +182,13 @@ void NozzleClamp(uint3 id : SV_DispatchThreadID)
 LINE_THREADS256
 void NozzleClamp256(uint3 id : SV_DispatchThreadID)
 {
-    float4 pos = ParticlePostion[id.x];
-    int4 ir = floor(pos);
-    
-    if (ir.x < 0 || ir.y < 0 || ir.z < 0 || ir.x >= grids.x - 1 || ir.y >= grids.y - 1 || ir.z >= grids.z - 1)
-    {
-        ParticlePostion[id.x] = GetRandomPosOnNozzle(id.x);
-    }
+    DoClamp(id);
 }
 
 LINE_THREADS64
 void NozzleClamp64(uint3 id : SV_DispatchThreadID)
 {
-    float4 pos = ParticlePostion[id.x];
-    int4 ir = floor(pos);
-    
-    if (ir.x < 0 || ir.y < 0 || ir.z < 0 || ir.x >= grids.x - 1 || ir.y >= grids.y - 1 || ir.z >= grids.z - 1)
-    {
-        ParticlePostion[id.x] = GetRandomPosOnNozzle(id.x);
-    }
+    DoClamp(id);
 }
 
 LINE_THREADS

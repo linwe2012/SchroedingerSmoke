@@ -17,7 +17,7 @@ float dt;
 float3 FetchEstimate(float3 pos)
 {
     // Grid position
-    uint3 ipos = floor(pos).xyz;
+    uint3 ipos = floor(pos / grid_size).xyz;
     
     float4 v = Velocity[ipos];
     

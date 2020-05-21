@@ -60,11 +60,13 @@ public class Nozzle : MonoBehaviour
     // TODO: 测试支持6个自由度的nozzle
     public void UpdateNozzles()
     {
+        var grid_size = isf.GetGridSize();
 
         nozzle_dir.Normalize();
         if(nozzle_dir == Vector3.up)
         {
             nozzle_dir.x += 0.01f;
+            nozzle_dir.Normalize();
         }
         nozzle_right = Vector3.Cross(nozzle_dir, Vector3.up);
         nozzle_right.Normalize();
@@ -74,14 +76,17 @@ public class Nozzle : MonoBehaviour
 
         var mm = MinMaxVec.Create();
 
-        mm.Feed(nozzle_center + nozzle_dir * nozzle_length / 2);
-        mm.Feed(nozzle_center - nozzle_dir * nozzle_length / 2);
+        Vector3 stretch = ISFUtils.Div(nozzle_dir * nozzle_length, grid_size);
+        mm.Feed(nozzle_center + stretch / 2);
+        mm.Feed(nozzle_center - stretch / 2);
 
-        mm.Feed(nozzle_center + nozzle_right * nozzle_radius);
-        mm.Feed(nozzle_center - nozzle_right * nozzle_radius);
+        stretch = ISFUtils.Div(nozzle_right * nozzle_radius, grid_size);
+        mm.Feed(nozzle_center + stretch);
+        mm.Feed(nozzle_center - stretch);
 
-        mm.Feed(nozzle_center + nozzle_up * nozzle_radius);
-        mm.Feed(nozzle_center - nozzle_up * nozzle_radius);
+        stretch = ISFUtils.Div(nozzle_up * nozzle_radius, grid_size);
+        mm.Feed(nozzle_center + stretch);
+        mm.Feed(nozzle_center - stretch);
 
         Vector3Int box, box_center;
         mm.GetRenderTextureBoundingBox(8, out box, out box_center);
@@ -109,6 +114,7 @@ public class Nozzle : MonoBehaviour
         CS.SetVector("nozzle_right", nozzle_right);
         CS.SetVector("nozzle_up", nozzle_up);
         
+        
         ISFSync();
 
         CS.SetTexture(kernelCreateNozzleMask, "Nozzle", NozzleRT);
@@ -123,6 +129,7 @@ public class Nozzle : MonoBehaviour
         CS.SetVector("size", isf.size);
         CS.SetInts("res", isf.GetGrids());
         CS.SetInts("grids", isf.GetGrids());
+        CS.SetVector("grod_size", isf.GetGridSize());
     }
 
     public void InitilizeNozzlePsi(ref RenderTexture psi1, ref RenderTexture psi2)
@@ -136,6 +143,7 @@ public class Nozzle : MonoBehaviour
         var volecity2 = Vector3.Dot(nozzle_velocity, nozzle_velocity);
         float omega = volecity2 / (2 * isf.hbar);
         CS.SetFloat("omega_t", omega * isf.current_tick * isf.estimate_dt);
+        CS.SetFloat("hbar", isf.hbar);
 
         DispatchCS(kernelNozzleUpdatePsi, true);
 
@@ -162,7 +170,6 @@ public class Nozzle : MonoBehaviour
         {
             var N = isf.N;
             var rtf4 = FFT.CreateRenderTexture3D(N[0], N[1], N[2]);
-            DebugRT = 
             DebugRT = rtf4;
         }
 
@@ -215,6 +222,7 @@ public class Nozzle : MonoBehaviour
         // Application.Quit(0);
     }
 
+    
     void InitilizeParticles()
     {
         
@@ -285,12 +293,22 @@ public class Nozzle : MonoBehaviour
         RunMyTest();
         */
 
+        /*
+        fft = isf.fft;
+        fft.init();
+
+        isf.InitComputeShader();
+        isf.InitISF();
+        particles.MyRunTest(isf);
+        */
+
         PrepareNozzle();
     }
 
     // Update is called once per frame
     void Update()
     {
+        
         isf.current_tick += 1;
 
         isf.ShroedingerIntegration(ref psi1, ref psi2);
@@ -306,6 +324,7 @@ public class Nozzle : MonoBehaviour
         ClampParticles();
 
         particles.DoRender();
+        
     }
 
     void OnDestroy()
