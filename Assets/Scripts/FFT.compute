@@ -32,6 +32,7 @@
 
 
 int N;
+int3 N3D;
 int FFTPass;
 int Ns;
 
@@ -222,7 +223,7 @@ void FFTDepth_IEND(uint3 id : SV_DispatchThreadID)
 
 
 
-//横向FFT计算,只针对第m-1阶段，最后一阶段需要特殊处理
+//横向FFT计算
 THE_THREDS
 void IFFTHorizontal(uint3 id : SV_DispatchThreadID)
 {
@@ -335,6 +336,7 @@ void IFFTDepthEnd(uint3 id : SV_DispatchThreadID)
     OutputRT[id.xyz] = output;
 }
 
+// IFFT 辅助函数
 THE_THREDS
 void IFFTConj(uint3 id : SV_DispatchThreadID)
 {
@@ -360,12 +362,12 @@ THE_THREDS
 void FFTShift(int3 id: SV_DispatchThreadID)
 {
     // int 32-bit signed integer
-    int3 shift = (((id - (N >> 1)) >> 31) << 1);
+    int3 shift = (((id - (N3D >> 1)) >> 31) << 1);
     
     shift += 1;
     
     shift *= -1;
-    shift *= (N >> 1);
+    shift *= (N3D >> 1);
     
     // OutputRT[id] = float2(shift.x, shift.y); //InputRT[id + shift];
     OutputRT[id] = InputRT[id + shift];

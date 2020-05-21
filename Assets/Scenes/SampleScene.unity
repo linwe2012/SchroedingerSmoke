@@ -374,10 +374,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   fft: {fileID: 1570121832}
   ISFCS: {fileID: 7200000, guid: 21a9332914fde2d489d76f47dc5c84b1, type: 3}
-  N: 16
+  N: {x: 32, y: 32, z: 32}
   size: {x: 2, y: 2, z: 2}
   hbar: 0.1
-  estimate_dt: 0.033333335
+  estimate_dt: 0.0208
   current_tick: 0
 --- !u!114 &1570121835
 MonoBehaviour:
@@ -395,12 +395,12 @@ MonoBehaviour:
   fft: {fileID: 0}
   particles: {fileID: 1570121836}
   CS: {fileID: 7200000, guid: b0e97f9e108245c4fb42b4fbec326cc9, type: 3}
-  nozzle_center: {x: 4, y: 8, z: 8}
+  nozzle_center: {x: 4, y: 16, z: 16}
   nozzle_right: {x: 0, y: 0, z: 0}
   nozzle_dir: {x: 1, y: 0, z: 0}
-  nozzle_velocity: {x: 0, y: 0, z: 1}
-  nozzle_radius: 3
-  nozzle_length: 3
+  nozzle_velocity: {x: 1, y: 0, z: 0}
+  nozzle_radius: 8
+  nozzle_length: 8
 --- !u!114 &1570121836
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -414,11 +414,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   CS: {fileID: 7200000, guid: 30cdde274c3088142aa1e149d837be94, type: 3}
-  MaxN: 102400
-  CurN: 1024
-  IncN: 1024
+  MaxN: 4621440
+  CurN: 4096
+  IncN: 4096
   particleMat: {fileID: 2100000, guid: 2e4849c520cc794479cdb2311a2d113d, type: 2}
-  Scale: {x: 0.3, y: 0.3, z: 0.3, w: 1}
+  Scale: {x: 1, y: 1, z: 1, w: 1}
 --- !u!1 &1570326780
 GameObject:
   m_ObjectHideFlags: 0

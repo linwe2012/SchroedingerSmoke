@@ -1,7 +1,8 @@
 ﻿// Particle System tailored for ISF
 
 #pragma kernel EnumlateParticle
-
+#pragma kernel EnumlateParticle256
+#pragma kernel EnumlateParticle64
 
 RWTexture3D<float4> Velocity;
 RWStructuredBuffer<float4> ParticlePostion;
@@ -10,6 +11,8 @@ uint3 grids;
 float dt;
 
 #define THE_THREADS [numthreads(1024, 1, 1)]
+#define THE_THREADS_256 [numthreads(256, 1, 1)]
+#define THE_THREADS_64 [numthreads(64, 1, 1)]
 
 float3 FetchEstimate(float3 pos)
 {
@@ -25,8 +28,8 @@ float3 FetchEstimate(float3 pos)
     float z = (1 - w.y) * ((1 - w.x) * v.z + w.x * v.z);
     
     x += w.z * ((1 - w.y) * v.x + w.y * v.x);
-    y += w.z * ((1 - w.x) * v.y + w.y * v.x);
-    z += w.y * ((1 - w.x) * v.z + w.y * v.x);
+    y += w.z * ((1 - w.x) * v.y + w.x * v.y);
+    z += w.y * ((1 - w.x) * v.z + w.x * v.z);
 
     return float3(x, y, z);
 }
@@ -47,8 +50,35 @@ void EnumlateParticle (uint3 id : SV_DispatchThreadID)
     ParticlePostion[id.x] = res;
 }
 
+THE_THREADS_256
+void EnumlateParticle256(uint3 id : SV_DispatchThreadID)
+{
+    float4 pos = ParticlePostion[id.x];
+    
+    float3 k1 = FetchEstimate(pos.xyz);
+    float3 k2 = FetchEstimate(pos.xyz + k1 * dt / 2);
+    float3 k3 = FetchEstimate(pos.xyz + k2 * dt / 2);
+    float3 k4 = FetchEstimate(pos.xyz + k3 * dt);
+    
+    float4 res = pos + float4((k1 + 2 * k2 + 2 * k3 + k4) * dt / 6, 0);
+    
+    ParticlePostion[id.x] = res;
+}
 
-
+THE_THREADS_64
+void EnumlateParticle64(uint3 id : SV_DispatchThreadID)
+{
+    float4 pos = ParticlePostion[id.x];
+    
+    float3 k1 = FetchEstimate(pos.xyz);
+    float3 k2 = FetchEstimate(pos.xyz + k1 * dt / 2);
+    float3 k3 = FetchEstimate(pos.xyz + k2 * dt / 2);
+    float3 k4 = FetchEstimate(pos.xyz + k3 * dt);
+    
+    float4 res = pos + float4((k1 + 2 * k2 + 2 * k3 + k4) * dt / 6, 0);
+    
+    ParticlePostion[id.x] = res;
+}
 
 /*
 void FetchVelocity(float4 pos)

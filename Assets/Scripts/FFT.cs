@@ -43,14 +43,17 @@ public class FFT : MonoBehaviour
     int kernelBlitSliceOf3DTextureFloat4;
     int kernelBlitSliceOf3DTextureFloat1;
 
-    int N;
-    int FFTPow;
 
-    public void SetN(int n)
+    Vector3Int N = new Vector3Int();
+    Vector3Int FFTPow = new Vector3Int();
+
+    public void SetN(Vector3Int n)
     {
         N = n;
-        FFTPow = Mathf.FloorToInt(Mathf.Log(N, 2));
-        CS.SetInt("N", N);
+        FFTPow[0] = Mathf.FloorToInt(Mathf.Log(N[0], 2));
+        FFTPow[1] = Mathf.FloorToInt(Mathf.Log(N[1], 2));
+        FFTPow[2] = Mathf.FloorToInt(Mathf.Log(N[2], 2));
+        // CS.SetInt("N", N);
     }
     
     void Blit2DToDebug(RenderTexture texture, RenderTexture dbg)
@@ -74,7 +77,7 @@ public class FFT : MonoBehaviour
     {
         CS.SetTexture(kernelBlitIOTex, "InputTex", texture);
         CS.SetTexture(kernelBlitIOTex, "OutputRT", rt);
-        CS.Dispatch(kernelBlitIOTex, N / 8, N / 8, N / 8);
+        CS.Dispatch(kernelBlitIOTex, N[0] / 8, N[1] / 8, N[2] / 8);
     }
 
     static public RenderTexture CreateRenderTexture(int size, RenderTextureFormat type = RenderTextureFormat.ARGBFloat)
@@ -113,9 +116,9 @@ public class FFT : MonoBehaviour
 
     public void fft(ref RenderTexture InputRT, ref RenderTexture Output)
     {
-        CS.SetInt("N", InputRT.width);
+        CS.SetInt("N", N[0]);
         //进行横向FFT
-        for (int m = 1; m <= FFTPow; m++)
+        for (int m = 1; m <= FFTPow[0]; m++)
         {
             CS.SetInt("FFTPass", m);
             int ns = 1 << (m - 1);
@@ -124,7 +127,8 @@ public class FFT : MonoBehaviour
         }
 
         //进行纵向FFT
-        for (int m = 1; m <= FFTPow; m++)
+        CS.SetInt("N", N[1]);
+        for (int m = 1; m <= FFTPow[1]; m++)
         {
             CS.SetInt("FFTPass", m);
             int ns = 1 << (m - 1);
@@ -133,7 +137,8 @@ public class FFT : MonoBehaviour
         }
 
         //进行深度FFT
-        for (int m = 1; m <= FFTPow; m++)
+        CS.SetInt("N", N[2]);
+        for (int m = 1; m <= FFTPow[2]; m++)
         {
             CS.SetInt("FFTPass", m);
             int ns = 1 << (m - 1);
@@ -144,23 +149,23 @@ public class FFT : MonoBehaviour
 
     public void fftshift(ref RenderTexture input, ref RenderTexture Output)
     {
-        CS.SetInt("N", input.width);
+        int[] N3D = { N[0], N[1], N[2] };
+        CS.SetInts("N3D", N3D);
         ComputeFFT(kernelFFTShift, ref input, ref Output);
     }
-
-
 
     [System.Obsolete("This implemenation is possibly buggy")]
     public void ifft_c(ref RenderTexture InputRT)
     {
+        CS.SetInt("N", N[0]);
         //进行横向FFT
-        for (int m = 1; m <= FFTPow; m++)
+        for (int m = 1; m <= FFTPow[0]; m++)
         {
             CS.SetInt("FFTPass", m);
             int ns = 1 << (m - 1);
             CS.SetInt("Ns", ns);
             //最后一次进行特殊处理
-            if (m != FFTPow)
+            if (m != FFTPow[0])
             {
                 ComputeFFT(kernelIFFTHorizontal, ref InputRT);
             }
@@ -171,13 +176,14 @@ public class FFT : MonoBehaviour
         }
 
         //进行纵向FFT
-        for (int m = 1; m <= FFTPow; m++)
+        CS.SetInt("N", N[1]);
+        for (int m = 1; m <= FFTPow[1]; m++)
         {
             CS.SetInt("FFTPass", m);
             int ns = 1 << (m - 1);
             CS.SetInt("Ns", ns);
             //最后一次进行特殊处理
-            if (m != FFTPow)
+            if (m != FFTPow[1])
             {
                 ComputeFFT(kernelIFFTVertical, ref InputRT);
             }
@@ -188,13 +194,14 @@ public class FFT : MonoBehaviour
         }
 
         //进行纵向FFT
-        for (int m = 1; m <= FFTPow; m++)
+        CS.SetInt("N", N[2]);
+        for (int m = 1; m <= FFTPow[2]; m++)
         {
             CS.SetInt("FFTPass", m);
             int ns = 1 << (m - 1);
             CS.SetInt("Ns", ns);
             //最后一次进行特殊处理
-            if (m != FFTPow)
+            if (m != FFTPow[2])
             {
                 ComputeFFT(kernelIFFTDepth, ref InputRT);
             }
@@ -210,9 +217,9 @@ public class FFT : MonoBehaviour
     [System.Obsolete("This implemenation is possibly buggy")]
     public void ifft_a(ref RenderTexture InputRT)
     {
-        CS.SetInt("N", InputRT.width);
+        CS.SetInt("N", N[0]);
         //进行横向FFT
-        for (int m = 1; m <= FFTPow; m++)
+        for (int m = 1; m <= FFTPow[0]; m++)
         {
             CS.SetInt("FFTPass", m);
             int ns = 1 << (m - 1);
@@ -222,7 +229,8 @@ public class FFT : MonoBehaviour
         ComputeFFT(kernelIFFTFlip, ref InputRT);
 
         //进行纵向FFT
-        for (int m = 1; m <= FFTPow; m++)
+        CS.SetInt("N", N[1]);
+        for (int m = 1; m <= FFTPow[1]; m++)
         {
             CS.SetInt("FFTPass", m);
             int ns = 1 << (m - 1);
@@ -232,7 +240,8 @@ public class FFT : MonoBehaviour
         ComputeFFT(kernelIFFTFlip, ref InputRT);
 
         //进行纵向FFT
-        for (int m = 1; m <= FFTPow; m++)
+        CS.SetInt("N", N[2]);
+        for (int m = 1; m <= FFTPow[2]; m++)
         {
             CS.SetInt("FFTPass", m);
             int ns = 1 << (m - 1);
@@ -245,11 +254,10 @@ public class FFT : MonoBehaviour
 
     public void ifft_b(ref RenderTexture InputRT)
     {
-        CS.SetInt("N", InputRT.width);
-
+        CS.SetInt("N", N[0]);
         ComputeFFT(kernelIFFTConj, ref InputRT);
         //进行横向FFT
-        for (int m = 1; m <= FFTPow; m++)
+        for (int m = 1; m <= FFTPow[0]; m++)
         {
             CS.SetInt("FFTPass", m);
             int ns = 1 << (m - 1);
@@ -260,7 +268,8 @@ public class FFT : MonoBehaviour
 
         ComputeFFT(kernelIFFTConj, ref InputRT);
         //进行纵向FFT
-        for (int m = 1; m <= FFTPow; m++)
+        CS.SetInt("N", N[1]);
+        for (int m = 1; m <= FFTPow[1]; m++)
         {
             CS.SetInt("FFTPass", m);
             int ns = 1 << (m - 1);
@@ -271,7 +280,8 @@ public class FFT : MonoBehaviour
 
         ComputeFFT(kernelIFFTConj, ref InputRT);
         //进行纵向FFT
-        for (int m = 1; m <= FFTPow; m++)
+        CS.SetInt("N", N[2]);
+        for (int m = 1; m <= FFTPow[2]; m++)
         {
             CS.SetInt("FFTPass", m);
             int ns = 1 << (m - 1);
@@ -285,17 +295,18 @@ public class FFT : MonoBehaviour
 
     public void ifft(ref RenderTexture InputRT, ref RenderTexture Output)
     {
-        CS.SetInt("N", InputRT.width);
+        
 
         ComputeFFT(kernelIFFTConj, ref InputRT, ref Output);
+        CS.SetInt("N", N[0]);
         //进行横向FFT
-        for (int m = 1; m <= FFTPow; m++)
+        for (int m = 1; m <= FFTPow[0]; m++)
         {
             CS.SetInt("FFTPass", m);
             int ns = 1 << (m - 1);
             CS.SetInt("Ns", ns);
             //最后一次进行特殊处理
-            if (m != FFTPow)
+            if (m != FFTPow[0])
             {
                 ComputeFFT(kernelFFTHorizontal, ref InputRT, ref Output);
             }
@@ -305,14 +316,15 @@ public class FFT : MonoBehaviour
             }
         }
 
+        CS.SetInt("N", N[1]);
         //进行纵向FFT
-        for (int m = 1; m <= FFTPow; m++)
+        for (int m = 1; m <= FFTPow[1]; m++)
         {
             CS.SetInt("FFTPass", m);
             int ns = 1 << (m - 1);
             CS.SetInt("Ns", ns);
             //最后一次进行特殊处理
-            if (m != FFTPow)
+            if (m != FFTPow[1])
             {
                 ComputeFFT(kernelFFTVertical, ref InputRT, ref Output);
             }
@@ -322,14 +334,15 @@ public class FFT : MonoBehaviour
             }
         }
 
+        CS.SetInt("N", N[2]);
         //进行纵向FFT
-        for (int m = 1; m <= FFTPow; m++)
+        for (int m = 1; m <= FFTPow[2]; m++)
         {
             CS.SetInt("FFTPass", m);
             int ns = 1 << (m - 1);
             CS.SetInt("Ns", ns);
             //最后一次进行特殊处理
-            if (m != FFTPow)
+            if (m != FFTPow[2])
             {
                 ComputeFFT(kernelFFTDepth, ref InputRT, ref Output);
             }
@@ -376,7 +389,7 @@ public class FFT : MonoBehaviour
         CS.SetTexture(kernel, "InputRT", input);
         CS.SetTexture(kernel, "OutputRT", OutputRT);
 
-        CS.Dispatch(kernel, N / 8, N / 8, N / 8);
+        CS.Dispatch(kernel, N[0] / 8, N[1] / 8, N[2] / 8);
         RenderTexture rt = input;
         input = OutputRT;
         OutputRT = rt;
@@ -387,7 +400,7 @@ public class FFT : MonoBehaviour
         CS.SetTexture(kernel, "InputRT", input);
         CS.SetTexture(kernel, "OutputRT", output);
 
-        CS.Dispatch(kernel, N / 8, N / 8, N / 8);
+        CS.Dispatch(kernel, N[0] / 8, N[1] / 8, N[2] / 8);
         RenderTexture rt = input;
         input = output;
         output = rt;
@@ -730,7 +743,7 @@ public class FFT : MonoBehaviour
         }
         texture.Apply(updateMipmaps: false);
         RenderTexture.active = null;
-        SetN(textureIn.width);
+        SetN(new Vector3Int(textureIn.width, textureIn.height, textureIn.volumeDepth));
         Blit3D(texture, textureIn);
         text = texture;
         return textureIn;
@@ -740,7 +753,7 @@ public class FFT : MonoBehaviour
     {
         Texture3D texture;
         var textureIn = LoadJson3D("test/input.json", out texture);
-        var textureOut = CreateRenderTexture3D(N, N, N, RenderTextureFormat.RGFloat);
+        var textureOut = CreateRenderTexture3D(N[0], N[1], N[2], RenderTextureFormat.RGFloat);
         OutputRT = textureOut;
         /*
         var textureIn = CreateRenderTexture3D(N, N, N, RenderTextureFormat.RGFloat);

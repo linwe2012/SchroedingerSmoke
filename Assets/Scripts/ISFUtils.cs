@@ -13,6 +13,15 @@ public static class ISFUtils
             );
     }
 
+    public static Vector3 Div(Vector3 a, Vector3 b)
+    {
+        Vector3 c;
+        c.x = a.x / b.x;
+        c.y = a.y / b.y;
+        c.z = a.z / b.z;
+        return c;
+    }
+
 }
 
 
@@ -64,11 +73,26 @@ public struct MinMaxVec
 
     public void GetRenderTextureBoundingBox(int multiple, out Vector3Int size, out Vector3Int center)
     {
+        Vector3 dummy = new Vector3(0, 0, 0);
+        GetMinMax(dummy, ref dummy, ref min);
+
         var ssize = max - min;
         ssize /= multiple;
+        if(ssize.x <= 0)
+        {
+            ssize.x = 0.1f;
+        }
+        else if(ssize.y <= 0)
+        {
+            ssize.y = 0.1f;
+        }
+        else if(ssize.z <= 0)
+        {
+            ssize.z = 0.1f;
+        }
         size = CeilToInt(ssize) * multiple;
 
-        center = FloorToInt(min + size / 2);
+        center = CeilToInt(min + new Vector3(size.x, size.y, size.z) / 2.0f);
     }
 
     public Vector3 min;

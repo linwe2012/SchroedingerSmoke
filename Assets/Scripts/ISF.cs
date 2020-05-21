@@ -25,7 +25,7 @@ public class ISF : MonoBehaviour
     int kernelInitializePsi;
     int kernelReprojectVelocityToGrid;
 
-    public int N = 32;
+    public Vector3Int N = new Vector3Int(64, 64, 64);
 
     public Vector3 size = new Vector3(2, 2, 2);
     public float hbar = 0.1f;
@@ -34,12 +34,12 @@ public class ISF : MonoBehaviour
 
     public Vector3 GetGridSize()
     {
-        return size / N;
+        return ISFUtils.Div(size, ISFUtils.IntToFloat(N));
     }
 
     public int[] GetGrids()
     {
-        int[] n = { N, N, N };
+        int[] n = { N[0], N[1], N[2] };
         return n;
     }
 
@@ -50,7 +50,7 @@ public class ISF : MonoBehaviour
 
     public void DispatchISFCS(int kernel, bool is_mini_threads = false)
     {
-        ISFCS.Dispatch(kernel, N / 8, N / 8, N / 8);
+        ISFCS.Dispatch(kernel, N[0] / 8, N[1] / 8, N[2] / 8);
     }
 
     public void InitComputeShader()
@@ -71,13 +71,13 @@ public class ISF : MonoBehaviour
 
     public void InitISF()
     {
-        int[] res = { N, N, N };
+        int[] res = GetGrids();
 
-        SchroedingerMul = FFT.CreateRenderTexture3D(N, N, N, RenderTextureFormat.RGFloat);
-        PossionMul = FFT.CreateRenderTexture3D(N, N, N, RenderTextureFormat.RFloat);
-        Velocity = FFT.CreateRenderTexture3D(N, N, N, RenderTextureFormat.ARGBFloat);
-        Divergence = FFT.CreateRenderTexture3D(N, N, N, RenderTextureFormat.RGFloat);
-        TempRT = FFT.CreateRenderTexture3D(N, N, N, RenderTextureFormat.RGFloat);
+        SchroedingerMul = FFT.CreateRenderTexture3D(N[0], N[1], N[2], RenderTextureFormat.RGFloat);
+        PossionMul = FFT.CreateRenderTexture3D(N[0], N[1], N[2], RenderTextureFormat.RFloat);
+        Velocity = FFT.CreateRenderTexture3D(N[0], N[1], N[2], RenderTextureFormat.ARGBFloat);
+        Divergence = FFT.CreateRenderTexture3D(N[0], N[1], N[2], RenderTextureFormat.RGFloat);
+        TempRT = FFT.CreateRenderTexture3D(N[0], N[1], N[2], RenderTextureFormat.RGFloat);
 
         fft.OutputRT = TempRT;
         fft.SetN(N);

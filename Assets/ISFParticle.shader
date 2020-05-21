@@ -9,9 +9,11 @@ Shader "Unlit/ISFParticle" {
     }
         SubShader{
             Pass {
-            Tags{ "RenderType" = "Opaque" }
+            Tags{ "RenderType" = "Transparent" "Queue" = "Transparent" }
+            Blend SrcAlpha OneMinusSrcAlpha
+            Cull Off
+            //Tags{ "RenderType" = "Opaque" }
             LOD 200
-            Blend SrcAlpha one
 
             CGPROGRAM
         // Physically based Standard lighting model, and enable shadows on all light types
@@ -48,7 +50,7 @@ Shader "Unlit/ISFParticle" {
 
         float4 frag(PS_INPUT i) : COLOR
         {
-            return float4(0.5, 0.5, 0.7, 1);
+            return float4(0.6, 0.6, 0.65, 0.4);
         }
 
 

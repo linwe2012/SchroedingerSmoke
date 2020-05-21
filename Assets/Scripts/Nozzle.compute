@@ -8,11 +8,16 @@
 #pragma kernel NozzleClamp
 #pragma kernel InitNozzle
 
+#pragma kernel NozzleClamp256
+#pragma kernel NozzleClamp64
+
 #define THE_THREDS [numthreads(8, 8, 8)]
 #define MINI_THREADS [numthreads(8, 8, 8)]
 #define LINE_THREADS [numthreads(1024, 1, 1)]
+#define LINE_THREADS256 [numthreads(256, 1, 1)]
+#define LINE_THREADS64 [numthreads(64, 1, 1)]
 
-
+#define PI 3.1415926535898
 
 RWTexture3D<float2> Psi1;
 RWTexture3D<float2> Psi2;
@@ -46,15 +51,19 @@ int3 grids;
 
 uint rng_state;
 
-uint rand_lcg()
+uint wang_hash(uint seed)
 {
-    // LCG values from Numerical Recipes
-    rng_state = 1664525 * rng_state + 1013904223;
-    return rng_state;
+    seed = (seed ^ 61) ^ (seed >> 16);
+    seed *= 9;
+    seed = seed ^ (seed >> 4);
+    seed *= 0x27d4eb2d;
+    seed = seed ^ (seed >> 15);
+    return seed;
 }
 
-uint rand_xorshift()
+uint rand_xorshift(uint rng_seed)
 {
+    rng_state ^= rng_seed;
     // Xorshift algorithm from George Marsaglia's paper
     rng_state ^= (rng_state << 13);
     rng_state ^= (rng_state >> 17);
@@ -62,21 +71,25 @@ uint rand_xorshift()
     return rng_state;
 }
 
-float randf()
+float randf(uint rng_seed)
 {
-    return float(rand_xorshift()) * (1.0 / 94967296.0);
+    return float(rand_xorshift(rng_seed)) * (1.0 / 4294967296.0) * 2 * PI;
 }
 
 
+
+
 // https://blog.csdn.net/menjiawan/article/details/43021507
-float4 GetRandomPosOnNozzle()
+float4 GetRandomPosOnNozzle(uint seed)
 {
-    float t = randf();
+    
+    float t = randf(seed);
     
     float3 r = nozzle_up * cos(t) + nozzle_right * sin(t);
-    r *= nozzle_radius;
+    r *= nozzle_radius * 0.9;
+    r += nozzle_center;
     
-    return float4(r + nozzle_center, 0);
+    return float4(r, 0);
 }
 
 
@@ -144,7 +157,7 @@ void BlitDebugMask(int3 id : SV_DispatchThreadID)
 
 
 
-THE_THREDS
+LINE_THREADS
 void NozzleClamp(uint3 id : SV_DispatchThreadID)
 {
     float4 pos = ParticlePostion[id.x];
@@ -152,13 +165,39 @@ void NozzleClamp(uint3 id : SV_DispatchThreadID)
     
     if (ir.x < 0 || ir.y < 0 || ir.z < 0 || ir.x >= grids.x || ir.y >= grids.y || ir.z >= grids.z)
     {
-        ParticlePostion[id.x] = GetRandomPosOnNozzle();
+        ParticlePostion[id.x] = GetRandomPosOnNozzle(id.x);
+    }
+}
+
+
+
+LINE_THREADS256
+void NozzleClamp256(uint3 id : SV_DispatchThreadID)
+{
+    float4 pos = ParticlePostion[id.x];
+    int4 ir = floor(pos);
+    
+    if (ir.x < 0 || ir.y < 0 || ir.z < 0 || ir.x >= grids.x - 1 || ir.y >= grids.y - 1 || ir.z >= grids.z - 1)
+    {
+        ParticlePostion[id.x] = GetRandomPosOnNozzle(id.x);
+    }
+}
+
+LINE_THREADS64
+void NozzleClamp64(uint3 id : SV_DispatchThreadID)
+{
+    float4 pos = ParticlePostion[id.x];
+    int4 ir = floor(pos);
+    
+    if (ir.x < 0 || ir.y < 0 || ir.z < 0 || ir.x >= grids.x - 1 || ir.y >= grids.y - 1 || ir.z >= grids.z - 1)
+    {
+        ParticlePostion[id.x] = GetRandomPosOnNozzle(id.x);
     }
 }
 
 LINE_THREADS
 void InitNozzle(uint3 id : SV_DispatchThreadID)
 {
-    ParticlePostion[id.x] = GetRandomPosOnNozzle();
+    ParticlePostion[id.x] = GetRandomPosOnNozzle(id.x);
 }
 

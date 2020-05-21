@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+
 public class Nozzle : MonoBehaviour
 {
+
     public ISF isf;
     public FFT fft;
     public ParticleMan particles;
@@ -16,13 +18,15 @@ public class Nozzle : MonoBehaviour
     RenderTexture psi1;
     RenderTexture psi2;
 
-    int N = 16;
+    
 
     // nozzle 相关
     int kernelCreateNozzleMask;
     int kernelNozzleUpdatePsi;
-    int kernelNozzleClamp;
+    int[] kernelNozzleClamp = new int[(int)GPUThreads.T_KINDS];
     int kernelInitNozzle;
+
+    Random random = new Random();
 
     // Debug 专用
     int kernelZeroOutDebugOutput;
@@ -31,7 +35,7 @@ public class Nozzle : MonoBehaviour
     public Vector3 nozzle_center = new Vector3(4, 8, 8);
     public Vector3 nozzle_right;
     public Vector3 nozzle_dir = new Vector3(1, 0, 0);
-    public Vector3 nozzle_velocity = new Vector3(0, 0, 1);
+    public Vector3 nozzle_velocity = new Vector3(1, 0, 0);
     public float nozzle_radius = 3;
     public float nozzle_length = 3;
 
@@ -42,18 +46,26 @@ public class Nozzle : MonoBehaviour
 
         kernelZeroOutDebugOutput = CS.FindKernel("ZeroOutDebugOutput");
         kernelBlitDebugMask = CS.FindKernel("BlitDebugMask");
-        kernelNozzleClamp = CS.FindKernel("NozzleClamp");
+        kernelNozzleClamp[(int)(GPUThreads.T64 & GPUThreads.T_INDEX)] = CS.FindKernel("NozzleClamp64");
+        kernelNozzleClamp[(int)(GPUThreads.T256 & GPUThreads.T_INDEX)] = CS.FindKernel("NozzleClamp256");
+        kernelNozzleClamp[(int)(GPUThreads.T1024 & GPUThreads.T_INDEX)] = CS.FindKernel("NozzleClamp");
+
         kernelInitNozzle = CS.FindKernel("InitNozzle");
 
         CS.SetVector("size", isf.size);
-        int[] res = { N, N, N };
+        int[] res = isf.GetGrids();
         CS.SetInts("res", res);
     }
 
     // TODO: 测试支持6个自由度的nozzle
     public void UpdateNozzles()
     {
+
         nozzle_dir.Normalize();
+        if(nozzle_dir == Vector3.up)
+        {
+            nozzle_dir.x += 0.01f;
+        }
         nozzle_right = Vector3.Cross(nozzle_dir, Vector3.up);
         nozzle_right.Normalize();
 
@@ -96,11 +108,13 @@ public class Nozzle : MonoBehaviour
         CS.SetVector("nozzle_velocity", nozzle_velocity / isf.hbar);
         CS.SetVector("nozzle_right", nozzle_right);
         CS.SetVector("nozzle_up", nozzle_up);
-
+        
         ISFSync();
 
         CS.SetTexture(kernelCreateNozzleMask, "Nozzle", NozzleRT);
         DispatchCS(kernelCreateNozzleMask, true);
+
+        //ExportDebugMask();
     }
 
     void ISFSync()
@@ -130,15 +144,35 @@ public class Nozzle : MonoBehaviour
 
     public void DispatchCS(int kernel, bool is_mini_threads = false)
     {
-        CS.Dispatch(kernel, N / 8, N / 8, N / 8);
+        var N = isf.N;
+        CS.Dispatch(kernel, N[0] / 8, N[1] / 8, N[2] / 8);
         if (is_mini_threads)
         {
             CS.Dispatch(kernel, NozzleRT.width / 8, NozzleRT.height / 8, NozzleRT.volumeDepth / 8);
         }
         else
         {
-            CS.Dispatch(kernel, N / 8, N / 8, N / 8);
+            CS.Dispatch(kernel, N[0] / 8, N[1] / 8, N[2] / 8);
         }
+    }
+
+    void ExportDebugMask()
+    {
+        if(!DebugRT || !DebugRT.IsCreated())
+        {
+            var N = isf.N;
+            var rtf4 = FFT.CreateRenderTexture3D(N[0], N[1], N[2]);
+            DebugRT = 
+            DebugRT = rtf4;
+        }
+
+        CS.SetTexture(kernelZeroOutDebugOutput, "DebugOutput", DebugRT);
+        DispatchCS(kernelZeroOutDebugOutput);
+
+        CS.SetTexture(kernelBlitDebugMask, "Nozzle", NozzleRT);
+        CS.SetTexture(kernelBlitDebugMask, "DebugOutput", DebugRT);
+        DispatchCS(kernelBlitDebugMask);
+        fft.ExportFloat4_3D(DebugRT, "test/isf.nozzle.mask.json");
     }
 
     public void RunMyTest()
@@ -152,9 +186,10 @@ public class Nozzle : MonoBehaviour
         UpdateNozzles();
         fft.ExportFloat1_3D(NozzleRT, "test/isf.nozzle.json");
 
+        var N = isf.N;
         // Nozzle mask
         // =====================
-        var rtf4 = FFT.CreateRenderTexture3D(N, N, N);
+        var rtf4 = FFT.CreateRenderTexture3D(N[0], N[1], N[2]);
         DebugRT = rtf4;
         CS.SetTexture(kernelZeroOutDebugOutput, "DebugOutput", rtf4);
         DispatchCS(kernelZeroOutDebugOutput);
@@ -182,20 +217,31 @@ public class Nozzle : MonoBehaviour
 
     void InitilizeParticles()
     {
+        
         particles.Init(isf);
-        CS.SetBuffer(kernelInitNozzle, "ParticlePostion", particles.GetParticlePostion());
-        CS.Dispatch(kernelInitNozzle, particles.MaxN / 1024, 1, 1);
+
+        foreach(var buf in particles.AllCompuetBuffers())
+        {
+            CS.SetInt("rng_state", Random.Range(0, 999999));
+            CS.SetBuffer(kernelInitNozzle, "ParticlePostion", buf);
+            CS.Dispatch(kernelInitNozzle, buf.count / 1024, 1, 1);
+        }
+        
     }
 
     void ClampParticles()
     {
-        CS.SetBuffer(kernelNozzleClamp, "ParticlePostion", particles.GetParticlePostion());
-        CS.Dispatch(kernelNozzleClamp, particles.CurN / 1024, 1, 1);
+        foreach(var part in particles.AllCurrentParticles())
+        {
+            int kernel = kernelNozzleClamp[part.kernId];
+            CS.SetInt("rng_state", Random.Range(0, 999999));
+            CS.SetBuffer(kernel, "ParticlePostion", part.buf);
+            CS.Dispatch(kernel, part.count / part.threads, 1, 1);
+        }
     }
 
     void PrepareNozzle()
     {
-        N = isf.N;
         fft = isf.fft;
         fft.init();
 
@@ -205,16 +251,20 @@ public class Nozzle : MonoBehaviour
         InitComputeShader();
         UpdateNozzles();
 
-        psi1 = FFT.CreateRenderTexture3D(N, N, N, RenderTextureFormat.RGFloat);
-        psi2 = FFT.CreateRenderTexture3D(N, N, N, RenderTextureFormat.RGFloat);
+        var N = isf.N;
+
+        psi1 = FFT.CreateRenderTexture3D(N[0], N[1], N[2], RenderTextureFormat.RGFloat);
+        psi2 = FFT.CreateRenderTexture3D(N[0], N[1], N[2], RenderTextureFormat.RGFloat);
 
         isf.InitializePsi(ref psi1, ref psi2);
         for (int i = 0; i < 10; ++i)
         {
             InitilizeNozzlePsi(ref psi1, ref psi2);
         }
-
+       
         InitilizeParticles();
+
+        // fft.ExportFloat4_3D(particles.GetParticlePostion(), "test/part.init.json");
     }
 
     // Start is called before the first frame update
@@ -239,6 +289,8 @@ public class Nozzle : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        isf.current_tick += 1;
+
         isf.ShroedingerIntegration(ref psi1, ref psi2);
         isf.Normalize(ref psi1, ref psi2);
         isf.PressureProject(ref psi1, ref psi2);
@@ -250,8 +302,6 @@ public class Nozzle : MonoBehaviour
 
         particles.Emulate();
         ClampParticles();
-
-        isf.current_tick += 1;
 
         particles.DoRender();
     }
