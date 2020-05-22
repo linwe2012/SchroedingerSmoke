@@ -294,22 +294,22 @@ public class Nozzle : MonoBehaviour
         RunMyTest();
         */
 
-        
+        /*
         fft = isf.fft;
         fft.init();
 
         isf.InitComputeShader();
         isf.InitISF();
         particles.MyRunTest(isf);
-        
+        */
 
-        //PrepareNozzle();
+        PrepareNozzle();
     }
 
     // Update is called once per frame
     void Update()
     {
-        /*
+        
         isf.current_tick += 1;
 
         isf.ShroedingerIntegration(ref psi1, ref psi2);
@@ -325,7 +325,7 @@ public class Nozzle : MonoBehaviour
         ClampParticles();
 
         particles.DoRender();
-        */
+        
     }
 
     void OnDestroy()
