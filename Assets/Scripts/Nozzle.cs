@@ -75,18 +75,19 @@ public class Nozzle : MonoBehaviour
         nozzle_up.Normalize();
 
         var mm = MinMaxVec.Create();
+        Vector3 center = ISFUtils.Div(nozzle_center, grid_size);
 
         Vector3 stretch = ISFUtils.Div(nozzle_dir * nozzle_length, grid_size);
-        mm.Feed(nozzle_center + stretch / 2);
-        mm.Feed(nozzle_center - stretch / 2);
+        mm.Feed(center + stretch / 2);
+        mm.Feed(center - stretch / 2);
 
         stretch = ISFUtils.Div(nozzle_right * nozzle_radius, grid_size);
-        mm.Feed(nozzle_center + stretch);
-        mm.Feed(nozzle_center - stretch);
+        mm.Feed(center + stretch);
+        mm.Feed(center - stretch);
 
         stretch = ISFUtils.Div(nozzle_up * nozzle_radius, grid_size);
-        mm.Feed(nozzle_center + stretch);
-        mm.Feed(nozzle_center - stretch);
+        mm.Feed(center + stretch);
+        mm.Feed(center - stretch);
 
         Vector3Int box, box_center;
         mm.GetRenderTextureBoundingBox(8, out box, out box_center);
@@ -129,7 +130,7 @@ public class Nozzle : MonoBehaviour
         CS.SetVector("size", isf.size);
         CS.SetInts("res", isf.GetGrids());
         CS.SetInts("grids", isf.GetGrids());
-        CS.SetVector("grod_size", isf.GetGridSize());
+        CS.SetVector("grid_size", isf.GetGridSize());
     }
 
     public void InitilizeNozzlePsi(ref RenderTexture psi1, ref RenderTexture psi2)
@@ -293,22 +294,22 @@ public class Nozzle : MonoBehaviour
         RunMyTest();
         */
 
-        /*
+        
         fft = isf.fft;
         fft.init();
 
         isf.InitComputeShader();
         isf.InitISF();
         particles.MyRunTest(isf);
-        */
+        
 
-        PrepareNozzle();
+        //PrepareNozzle();
     }
 
     // Update is called once per frame
     void Update()
     {
-        
+        /*
         isf.current_tick += 1;
 
         isf.ShroedingerIntegration(ref psi1, ref psi2);
@@ -324,7 +325,7 @@ public class Nozzle : MonoBehaviour
         ClampParticles();
 
         particles.DoRender();
-        
+        */
     }
 
     void OnDestroy()

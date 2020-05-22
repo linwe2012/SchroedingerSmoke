@@ -17,11 +17,11 @@ float dt;
 float3 FetchEstimate(float3 pos)
 {
     // Grid position
-    uint3 ipos = floor(pos / grid_size).xyz;
+    int3 ipos = floor(pos / grid_size) / 2;
     
-    float4 v = Velocity[ipos];
+    float4 v = Velocity[ipos.zyx];
     
-    float3 w = pos.xyz - ipos * grid_size;
+    float3 w = pos.xyz - ipos * grid_size * 2;
     
     float x = (1 - w.z) * ((1 - w.y) * v.x + w.y * v.x);
     float y = (1 - w.z) * ((1 - w.x) * v.y + w.x * v.y);
@@ -31,6 +31,7 @@ float3 FetchEstimate(float3 pos)
     y += w.z * ((1 - w.x) * v.y + w.x * v.y);
     z += w.y * ((1 - w.x) * v.z + w.x * v.z);
 
+    //return w;
     return float3(x, y, z);
 }
 
@@ -42,13 +43,14 @@ void EnumlateParticle (uint3 id : SV_DispatchThreadID)
     float4 pos = ParticlePostion[id.x];
     
     float3 k1 = FetchEstimate(pos.xyz);
+    
+    
     float3 k2 = FetchEstimate(pos.xyz + k1 * dt / 2);
     float3 k3 = FetchEstimate(pos.xyz + k2 * dt / 2);
     float3 k4 = FetchEstimate(pos.xyz + k3 * dt);
     
     float4 res = pos + float4((k1 + 2 * k2 + 2 * k3 + k4) * dt / 6, 0);
 
-    
     ParticlePostion[id.x] = res;
 
     //pos.x += 0.01;

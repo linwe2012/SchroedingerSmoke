@@ -26,6 +26,7 @@ RWTexture3D<float2> Psi2;
 RWTexture3D<float4> Velocity;
 RWTexture3D<float2> Divergence;
 
+/*
 RWTexture3D<float> Nozzle;
 RWTexture3D<float4> DebugOutput;
 
@@ -39,6 +40,7 @@ float3 nozzle_topleft;
 float nozzle_length;
 float3 nozzle_velocity;
 float omega_t;
+*/
 
 float3 size; // 空间上的大小
 uint3 res;    // 空间上网格的分割数量

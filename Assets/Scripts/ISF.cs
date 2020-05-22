@@ -32,6 +32,13 @@ public class ISF : MonoBehaviour
     public float estimate_dt = 1f / 30f;
     public int current_tick = 0;
 
+    class DebugCallCount
+    {
+        public int velocity = 1;
+    };
+
+    DebugCallCount dbg_call = new DebugCallCount();
+
     public Vector3 GetGridSize()
     {
         return ISFUtils.Div(size, ISFUtils.IntToFloat(N));
@@ -132,7 +139,12 @@ public class ISF : MonoBehaviour
     public void PressureProject(ref RenderTexture psi1, ref RenderTexture psi2)
     {
         VelocityOneForm(ref psi1, ref psi2);
-        // fft.ExportFloat4_3D(Velocity, "test/isf.velo.json");
+        if(dbg_call.velocity == 0)
+        {
+            fft.ExportFloat4_3D(Velocity, "test/isf.velo.json");
+            ++dbg_call.velocity;
+        }
+        // 
 
         // 计算散度
         ISFCS.SetTexture(kernelComputeDivergence, "Velocity", Velocity);

@@ -24,6 +24,7 @@
 #pragma kernel BlitSliceOf3DTexture
 #pragma kernel BlitSliceOf3DTextureFloat4
 #pragma kernel BlitSliceOf3DTextureFloat1
+#pragma kernel BlitIOTexFloat4
 
 #define PI 3.1415926535898
 #define THREADS 8
@@ -39,6 +40,7 @@ int Ns;
 RWTexture3D<float2> InputRT;
 RWTexture3D<float2> OutputRT;
 Texture3D<float2> InputTex;
+Texture3D<float4> InputTex3DFloat4;
 
 RWTexture2D<float4> DebugOutput;
 
@@ -100,6 +102,12 @@ void BlitIORT(int3 id : SV_DispatchThreadID)
 void BlitIOTex(int3 id : SV_DispatchThreadID)
 {
     OutputRT[id.xyz] = InputTex.Load(int4(id, 0));
+}
+
+[numthreads(THREADS, THREADS, THREADS)]
+void BlitIOTexFloat4(int3 id : SV_DispatchThreadID)
+{
+    InputFloat4RT[id.xyz] = InputTex3DFloat4.Load(int4(id, 0));
 }
 
 [numthreads(THREADS, 1, 1)]

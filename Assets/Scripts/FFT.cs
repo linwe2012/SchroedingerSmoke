@@ -37,7 +37,9 @@ public class FFT : MonoBehaviour
     int kernelBlitIORT;
     int kernelBlitDebugOutput;
     int kernelIFFTConj;
-    
+    int kernelBlitIOTexFloat4;
+
+
 
     int kernelBlitSliceOf3DTexture;
     int kernelBlitSliceOf3DTextureFloat4;
@@ -75,14 +77,37 @@ public class FFT : MonoBehaviour
     // Graphics.Blit 貌似支持 2D Texture
     public void Blit3D(Texture3D texture, RenderTexture rt)
     {
-        CS.SetTexture(kernelBlitIOTex, "InputTex", texture);
-        CS.SetTexture(kernelBlitIOTex, "OutputRT", rt);
-        CS.Dispatch(kernelBlitIOTex, N[0] / 8, N[1] / 8, N[2] / 8);
+        switch(rt.format)
+        {
+            case RenderTextureFormat.ARGBFloat:
+                CS.SetTexture(kernelBlitIOTexFloat4, "InputTex3DFloat4", texture);
+                CS.SetTexture(kernelBlitIOTexFloat4, "InputFloat4RT", rt);
+                CS.Dispatch(kernelBlitIOTexFloat4, rt.width / 8, rt.height / 8, rt.volumeDepth / 8);
+                break;
+
+            case RenderTextureFormat.RGFloat:
+            default:
+                CS.SetTexture(kernelBlitIOTex, "InputTex", texture);
+                CS.SetTexture(kernelBlitIOTex, "OutputRT", rt);
+                CS.Dispatch(kernelBlitIOTex, rt.width / 8, rt.height / 8, rt.volumeDepth / 8);
+            break;
+
+        }
+        
     }
 
     static public RenderTexture CreateRenderTexture(int size, RenderTextureFormat type = RenderTextureFormat.ARGBFloat)
     {
         RenderTexture rt = new RenderTexture(size, size, 0, type);
+        rt.enableRandomWrite = true;
+        // rt.useMipMap = false;
+        rt.Create();
+        return rt;
+    }
+
+    static public RenderTexture CreateRenderTexture(int width, int height, RenderTextureFormat type = RenderTextureFormat.ARGBFloat)
+    {
+        RenderTexture rt = new RenderTexture(width, height, 0, type);
         rt.enableRandomWrite = true;
         // rt.useMipMap = false;
         rt.Create();
@@ -382,6 +407,7 @@ public class FFT : MonoBehaviour
         kernelBlitSliceOf3DTextureFloat4 = CS.FindKernel("BlitSliceOf3DTextureFloat4");
         kernelBlitSliceOf3DTextureFloat1 = CS.FindKernel("BlitSliceOf3DTextureFloat1");
         kernelIFFTConj = CS.FindKernel("IFFTConj");
+        kernelBlitIOTexFloat4 = CS.FindKernel("BlitIOTexFloat4");
     }
 
     void ComputeFFT(int kernel, ref RenderTexture input)
@@ -423,9 +449,9 @@ public class FFT : MonoBehaviour
 
     float[] ReadRenderTextureRaw3D(RenderTexture t, TextureFormat fmt)
     {
-        var res = new float[t.width * t.width * t.volumeDepth*4];
+        var res = new float[t.width * t.height * t.volumeDepth*4];
 
-        RenderTexture tmp = CreateRenderTexture(t.width, RenderTextureFormat.ARGBFloat);
+        RenderTexture tmp = CreateRenderTexture(t.width, t.height, RenderTextureFormat.ARGBFloat);
         int kernel;
         string input;
         switch(t.format)
@@ -450,10 +476,10 @@ public class FFT : MonoBehaviour
         for(int i = 0; i < t.volumeDepth; ++i)
         {
             CS.SetInt("layer", i);
-            CS.Dispatch(kernel, t.width / 8, t.width / 8, 1);
+            CS.Dispatch(kernel, t.width / 8, t.height / 8, 1);
             var k = ReadRenderTextureRaw(tmp, TextureFormat.RGBAFloat);
             // k.CopyTo(res, t.width * t.width * i);
-            System.Array.Copy(k, 0, res, t.width * t.width * i * 4, k.Length);
+            System.Array.Copy(k, 0, res, t.width * t.height * i * 4, k.Length);
         }
         return res;
     }
@@ -857,7 +883,7 @@ public class FFT : MonoBehaviour
         }
         texture.Apply(updateMipmaps: false);
         RenderTexture.active = null;
-        SetN(new Vector3Int(textureIn.width, textureIn.height, textureIn.volumeDepth));
+        //SetN(new Vector3Int(textureIn.width, textureIn.height, textureIn.volumeDepth));
         Blit3D(texture, textureIn);
         text = texture;
         return textureIn;
