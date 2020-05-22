@@ -17,11 +17,11 @@ float dt;
 float3 FetchEstimate(float3 pos)
 {
     // Grid position
-    uint3 ipos = floor(pos).xyz;
+    uint3 ipos = floor(pos / 2).xyz;
     
-    float4 v = Velocity[ipos];
+    float4 v = Velocity[ipos.zyx];
     
-    float3 w = pos.xyz - ipos * grid_size;
+    float3 w = pos.xyz - ipos * grid_size * 2;
     
     float x = (1 - w.z) * ((1 - w.y) * v.x + w.y * v.x);
     float y = (1 - w.z) * ((1 - w.x) * v.y + w.x * v.y);
