@@ -301,4 +301,28 @@ public class ParticleMan : MonoBehaviour
             part.Release();
         }
     }
+
+    public void MyRunTest(ISF _isf)
+    {
+        Init(_isf, 1024);
+
+        var compute = fft.LoadJson_Float4ComputeBuffer("test/part.itr01.json");
+
+        fft.ExportFloat4(compute, "test/part.itr0.reflect.json");
+        Texture3D text;
+        var velocity = fft.LoadJson3D_Float4("test/isf.velo.json", out text);
+
+        var grid_size = isf.GetGridSize();
+        Debug.Log(grid_size.ToString());
+        CS.SetVector("grid_size", grid_size);
+        CS.SetInts("grids", isf.GetGrids());
+        CS.SetFloat("dt", isf.estimate_dt);
+
+        int kernel = kernelEnumlateParticle[2];
+        CS.SetTexture(kernel, "Velocity", velocity);
+        CS.SetBuffer(kernel, "ParticlePostion", compute);
+        CS.Dispatch(kernel, 1, 1, 1);
+
+        fft.ExportFloat4(compute, "test/part.itr1.json");
+    }
 }
