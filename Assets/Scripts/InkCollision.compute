@@ -1,0 +1,149 @@
+﻿#pragma kernel InitInkCollisionPsi
+#pragma kernel Clamp64
+#pragma kernel Clamp256
+#pragma kernel Clamp
+
+RWTexture3D<float2> Psi1;
+RWTexture3D<float2> Psi2;
+
+RWStructuredBuffer<float4> ParticlePostion;
+
+float3 size; // 空间上的大小
+uint3 res; // 空间上网格的分割数量
+int3 grids;
+
+float omega_t;
+float3 velocity;
+
+uint expand_count = 10;
+RWStructuredBuffer<float4> OutpuBuf;
+float4x4 transform;
+float4 translate;
+uint start;
+
+#define THE_THREDS [numthreads(8, 8, 8)]
+#define LINE_THREADS [numthreads(1024, 1, 1)]
+#define LINE_THREADS256 [numthreads(256, 1, 1)]
+#define LINE_THREADS64 [numthreads(64, 1, 1)]
+
+THE_THREDS
+void InitInkCollisionPsi(int3 id : SV_DispatchThreadID)
+{
+    float3 v = velocity;
+    int3 pos = id ;
+    int3 mpos = id;
+    if(id.x > (grids.x >> 1))
+    {
+        mpos.x = grids.x - id.x;
+    }
+
+    float3 phase_v = v * mpos * size / float3(res);
+    
+    
+    float phase = phase_v.x + phase_v.y + phase_v.z - omega_t;
+    float amp1 = length(Psi1[pos]);
+    float amp2 = length(Psi2[pos]);
+    
+    float2 phase_c = float2(cos(phase), sin(phase));
+    
+    Psi1[pos] = amp1 * phase_c;
+    Psi2[pos] = amp2 * phase_c;
+}
+
+void DoClamp(int3 id)
+{
+    float4 pos = ParticlePostion[id.x];
+    int4 ir = floor(pos);
+    
+    if (ir.x < 0 || ir.y < 0 || ir.z < 0 || ir.x >= grids.x - 1 || ir.y >= grids.y - 1 || ir.z >= grids.z - 1)
+    {
+        ParticlePostion[id.x] = float4(0, 0, 0, 0);
+    }
+}
+
+LINE_THREADS256
+void Clamp256(int3 id : SV_DispatchThreadID)
+{
+    DoClamp(id);
+
+}
+
+LINE_THREADS64
+void Clamp64(int3 id : SV_DispatchThreadID)
+{
+    DoClamp(id);
+}
+
+LINE_THREADS
+void Clamp(int3 id : SV_DispatchThreadID)
+{
+    DoClamp(id);
+}
+
+uint rng_state;
+
+uint wang_hash(uint seed)
+{
+    seed = (seed ^ 61) ^ (seed >> 16);
+    seed *= 9;
+    seed = seed ^ (seed >> 4);
+    seed *= 0x27d4eb2d;
+    seed = seed ^ (seed >> 15);
+    return seed;
+}
+
+uint rand_xorshift(uint rng_seed)
+{
+    rng_state ^= rng_seed;
+    // Xorshift algorithm from George Marsaglia's paper
+    rng_state ^= (rng_state << 13);
+    rng_state ^= (rng_state >> 17);
+    rng_state ^= (rng_state << 5);
+    return rng_state;
+}
+
+uint next_seed(uint c)
+{
+    uint s1 = rng_state ^ wang_hash(c);
+    uint s2 = wang_hash(rand_xorshift(s1));
+    if (s2 & 1)
+    {
+        s2 = wang_hash(rand_xorshift(s2));
+    }
+    else
+    {
+        s2 = rand_xorshift(wang_hash(s2));
+    }
+    
+    return s2;
+}
+
+float next_float(uint c)
+{
+    return rand_xorshift(c) * (1.0 / 4294967296.0);
+}
+
+THE_THREDS
+void DoExpand(uint3 id)
+{
+    uint c = id.x + start;
+    
+    int i = id.x / expand_count;
+    int r = id.x % expand_count;
+
+    
+    uint s1 = next_seed(id.x);
+    uint s2 = next_seed(s1);
+    uint s3 = next_seed(s2);
+    
+    float v1 = next_float(s1);
+    float v2 = next_float(s2);
+    float v3 = next_float(s3);
+    
+    float4 v = float4(v1, v2, v3, 0);
+    v *= 0.1;
+    
+    float4 pos = ParticlePostion[i];
+    
+    OutpuBuf[id.x] = mul(transform, (pos + v)) + translate;
+}

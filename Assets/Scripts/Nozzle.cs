@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 
 
+
+
 public class Nozzle : MonoBehaviour
 {
 
@@ -145,7 +147,7 @@ public class Nozzle : MonoBehaviour
     public void DispatchCS(int kernel, bool is_mini_threads = false)
     {
         var N = isf.N;
-        CS.Dispatch(kernel, N[0] / 8, N[1] / 8, N[2] / 8);
+        // CS.Dispatch(kernel, N[0] / 8, N[1] / 8, N[2] / 8);
         if (is_mini_threads)
         {
             CS.Dispatch(kernel, NozzleRT.width / 8, NozzleRT.height / 8, NozzleRT.volumeDepth / 8);
@@ -272,7 +274,7 @@ public class Nozzle : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        
+        /*
         fft = isf.fft;
         fft.init();
         fft.myRunTest();
@@ -283,8 +285,15 @@ public class Nozzle : MonoBehaviour
 
         InitComputeShader();
         RunMyTest();
+        */
+        /*
+        fft = isf.fft;
+        fft.init();
+        isf.InitComputeShader();
+        isf.InitISF();
         
-
+        particles.MyRunTest(isf);
+        */
         PrepareNozzle();
     }
 
@@ -310,7 +319,7 @@ public class Nozzle : MonoBehaviour
 
     void OnDestroy()
     {
-        psi1.Release();
-        psi2.Release();
+        if(psi1) psi1.Release();
+        if(psi2) psi2.Release();
     }
 }

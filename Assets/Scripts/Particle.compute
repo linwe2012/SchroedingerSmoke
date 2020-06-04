@@ -17,11 +17,11 @@ float dt;
 float3 FetchEstimate(float3 pos)
 {
     // Grid position
-    uint3 ipos = floor(pos / 2).xyz;
+    uint3 ipos = floor(pos).xyz;
     
-    float4 v = Velocity[ipos.zyx];
+    float4 v = Velocity[ipos.xyz];
     
-    float3 w = pos.xyz - ipos * grid_size * 2;
+    float3 w = (pos.xyz - ipos) * grid_size;
     
     float x = (1 - w.z) * ((1 - w.y) * v.x + w.y * v.x);
     float y = (1 - w.z) * ((1 - w.x) * v.y + w.x * v.y);
@@ -31,7 +31,7 @@ float3 FetchEstimate(float3 pos)
     y += w.z * ((1 - w.x) * v.y + w.x * v.y);
     z += w.y * ((1 - w.x) * v.z + w.x * v.z);
 
-    return float3(x, y, z);
+    return float3(x, y, z) / grid_size;
 }
 
 // RK4 算法

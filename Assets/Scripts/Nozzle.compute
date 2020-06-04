@@ -83,12 +83,14 @@ float randf(uint rng_seed)
 float4 GetRandomPosOnNozzle(uint seed)
 {
     
-    float t = randf(seed);
     uint s2 = wang_hash(seed);
     uint s3= wang_hash(s2);
-    float disrtube = randf(s2) * 0.01;
-    float disrtube2 = randf(s3) * 0.01;
-    float disrtube3 = randf(wang_hash(s3)) * 0.01;
+    uint s4 = wang_hash(s3);
+    
+    float disrtube = randf(s2) * 0.02;
+    float disrtube2 = randf(s3) * 0.02;
+    float disrtube3 = randf(s4) * 0.02;
+    float t = randf(wang_hash(s4));
     
     float3 r = (nozzle_up * cos(t) + disrtube) + (nozzle_right * sin(t) + disrtube2);
     r *= nozzle_radius * 0.9;

@@ -31,6 +31,7 @@ public class ISF : MonoBehaviour
     public float hbar = 0.1f;
     public float estimate_dt = 1f / 30f;
     public int current_tick = 0;
+    public bool KeepSceneViewActive = true;
 
     class DebugCallCount
     {
@@ -218,5 +219,13 @@ public class ISF : MonoBehaviour
         ISFCS.SetTexture(kernelInitializePsi, "Psi2", psi2);
 
         DispatchISFCS(kernelInitializePsi);
+    }
+
+    private void Start()
+    {
+        if (this.KeepSceneViewActive && Application.isEditor)
+        {
+            UnityEditor.SceneView.FocusWindowIfItsOpen(typeof(UnityEditor.SceneView));
+        }
     }
 }

@@ -6,4 +6,6 @@ Library
 Logs
 obj
 Temp
+# 构建目录
+Build
 *.csproj
