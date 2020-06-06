@@ -35,7 +35,7 @@ public class ISF : MonoBehaviour
 
     class DebugCallCount
     {
-        public int velocity = 0;
+        public int velocity = 1;
     } ;
 
     DebugCallCount dbg_call = new DebugCallCount();
@@ -221,11 +221,11 @@ public class ISF : MonoBehaviour
         DispatchISFCS(kernelInitializePsi);
     }
 
-    private void Start()
-    {
-        if (this.KeepSceneViewActive && Application.isEditor)
-        {
-            UnityEditor.SceneView.FocusWindowIfItsOpen(typeof(UnityEditor.SceneView));
-        }
-    }
+    //private void Start()
+    //{
+    //    if (this.KeepSceneViewActive && Application.isEditor)
+    //    {
+    //        UnityEditor.SceneView.FocusWindowIfItsOpen(typeof(UnityEditor.SceneView));
+    //    }
+    //}
 }

@@ -22,8 +22,11 @@ public static class ISFUtils
         return c;
     }
 
+    public static Vector3Int Int3ToVector(int[] c)
+    {
+        return new Vector3Int(c[0], c[1], c[2]);
+    }
 }
-
 
 public struct MinMaxVec
 {

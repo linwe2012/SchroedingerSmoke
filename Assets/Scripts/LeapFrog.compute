@@ -1,0 +1,154 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CreateCylinderPsi
+#pragma kernel InitPsi
+
+#pragma kernel InitParticles
+#pragma kernel InitParticles64
+#pragma kernel InitParticles256
+
+float4 CylinderNormal;
+float4 CylinderCenter;
+float CylinderRaduis;
+float CylinderThickness;
+float4 velocity;
+
+uint3 res;
+int3 grids;
+float3 size;
+float omega_t;
+
+float3 box_size;
+float3 box_center;
+
+RWTexture3D<float2> Psi1;
+RWTexture3D<float2> Psi2;
+
+uint3 rng_state;
+
+RWStructuredBuffer<float4> ParticlePostion;
+
+
+#define PI 3.1415926535898
+
+#define THE_THREDS [numthreads(8, 8, 8)]
+#define LINE_THREADS [numthreads(1024, 1, 1)]
+#define LINE_THREADS256 [numthreads(256, 1, 1)]
+#define LINE_THREADS64 [numthreads(64, 1, 1)]
+
+uint3 wang_hash(uint3 seed)
+{
+    seed = (seed ^ 61) ^ (seed >> 16);
+    seed *= 9;
+    seed = seed ^ (seed >> 4);
+    seed *= 0x27d4eb2d;
+    seed = seed ^ (seed >> 15);
+    return seed;
+}
+
+uint3 rand_xorshift(uint3 rng_seed)
+{
+    rng_state ^= rng_seed;
+    // Xorshift algorithm from George Marsaglia's paper
+    rng_state ^= (rng_state << 13);
+    rng_state ^= (rng_state >> 17);
+    rng_state ^= (rng_state << 5);
+    return rng_state;
+}
+
+float3 randf(uint3 rng_seed)
+{
+    return float3(rand_xorshift(rng_seed)) * (1.0 / 4294967296.0);
+}
+
+inline float2 complexMul(float2 a, float2 b)
+{
+    return float2(
+		a.x * b.x - a.y * b.y,
+		a.x * b.y + a.y * b.x
+	);
+}
+
+
+
+
+THE_THREDS
+void CreateCylinderPsi(uint3 id : SV_DispatchThreadID)
+{
+    float3 vr = (id - CylinderCenter.xyz) / float3(res) * size;
+    float z = dot(CylinderNormal.xyz, vr);
+    float dist = dot(vr, vr);
+    
+    
+    // Psi1[id] = float2(0, 0);
+    
+    // in cylinder
+    if (dist - z * z < CylinderRaduis * CylinderRaduis)
+    {
+        float alpha = 0;
+        if (z > 0 && z <= CylinderThickness / 2)
+        {
+            alpha = -PI * (2 * z / CylinderThickness - 1);
+            //Psi1[id] = float2(8, 8);
+        }
+        else if (z <= 0 && z >= -CylinderThickness / 2)
+        {
+            alpha = -PI * (2 * z / CylinderThickness + 1);
+            // Psi1[id] = float2(8, 8);
+        }
+        
+        Psi1[id] = complexMul(
+            Psi1[id],
+            float2(cos(alpha), sin(alpha))
+        );
+    }
+
+}
+
+THE_THREDS
+void InitPsi(int3 id : SV_DispatchThreadID)
+{
+    int3 pos = id;
+    float3 phase_v = velocity.xyz * float3(pos) * size / float3(res);
+    float phase = phase_v.x + phase_v.y + phase_v.z - omega_t;
+    float amp1 = length(Psi1[pos]);
+    float amp2 = length(Psi2[pos]);
+    
+    float2 phase_c = float2(cos(phase), sin(phase));
+
+    Psi1[pos] = amp1 * phase_c;
+    Psi2[pos] = amp2 * phase_c;
+}
+
+
+float3 get_randf(uint3 x)
+{
+    return randf(wang_hash(x));
+}
+
+
+void DoInitParticles(uint3 id)
+{
+    float3 v = randf(wang_hash(id.x ^ rng_state)) * 2 - 1;
+    v *= box_size;
+    
+    ParticlePostion[id.x] = float4(v + box_center, 1);
+}
+
+
+LINE_THREADS
+void InitParticles(uint3 id : SV_DispatchThreadID)
+{
+    DoInitParticles(id);
+}
+
+LINE_THREADS64
+void InitParticles64(uint3 id : SV_DispatchThreadID)
+{
+    DoInitParticles(id);
+}
+
+LINE_THREADS256
+void InitParticles256(uint3 id : SV_DispatchThreadID)
+{
+    DoInitParticles(id);
+}

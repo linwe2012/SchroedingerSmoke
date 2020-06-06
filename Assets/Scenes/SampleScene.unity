@@ -305,7 +305,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -4216859302048453862, guid: e256bded49e2aa64ab4389174f2e8c5b, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 21.9
+      value: 19.6
       objectReference: {fileID: 0}
     - target: {fileID: -4216859302048453862, guid: e256bded49e2aa64ab4389174f2e8c5b, type: 3}
       propertyPath: m_LocalPosition.y
@@ -365,7 +365,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -927199367670048503, guid: e256bded49e2aa64ab4389174f2e8c5b, type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2834078683115760881, guid: e256bded49e2aa64ab4389174f2e8c5b, type: 3}
       propertyPath: m_Mesh
@@ -501,8 +501,8 @@ Camera:
   m_GameObject: {fileID: 963194225}
   m_Enabled: 1
   serializedVersion: 2
-  m_ClearFlags: 1
-  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
+  m_ClearFlags: 2
+  m_BackGroundColor: {r: 0.13207549, g: 0.12646851, b: 0.12646851, a: 0}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -542,13 +542,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 963194225}
-  m_LocalRotation: {x: -0, y: -0.70602167, z: -0, w: 0.70819026}
-  m_LocalPosition: {x: 6.92, y: 1, z: 3.21}
+  m_LocalRotation: {x: -0, y: -0.99789006, z: -0, w: 0.06492675}
+  m_LocalPosition: {x: 128.8, y: 90.4, z: 267.2}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
-  m_LocalEulerAnglesHint: {x: 0, y: -89.824, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: -172.555, z: 0}
 --- !u!114 &963194229
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -575,6 +575,7 @@ GameObject:
   - component: {fileID: 1570121835}
   - component: {fileID: 1570121836}
   - component: {fileID: 1570121837}
+  - component: {fileID: 1570121838}
   m_Layer: 0
   m_Name: ISF
   m_TagString: Untagged
@@ -626,7 +627,7 @@ MonoBehaviour:
   fft: {fileID: 1570121832}
   ISFCS: {fileID: 7200000, guid: 21a9332914fde2d489d76f47dc5c84b1, type: 3}
   N: {x: 64, y: 64, z: 64}
-  size: {x: 4, y: 2, z: 2}
+  size: {x: 2, y: 2, z: 2}
   hbar: 0.1
   estimate_dt: 0.02083333
   current_tick: 0
@@ -647,12 +648,12 @@ MonoBehaviour:
   fft: {fileID: 0}
   particles: {fileID: 1570121836}
   CS: {fileID: 7200000, guid: b0e97f9e108245c4fb42b4fbec326cc9, type: 3}
-  nozzle_center: {x: 4, y: 32, z: 32}
+  nozzle_center: {x: 32, y: 64, z: 64}
   nozzle_right: {x: 0, y: 0, z: 0}
   nozzle_dir: {x: 1, y: 0, z: 0}
   nozzle_velocity: {x: 1, y: 0, z: 0}
-  nozzle_radius: 16
-  nozzle_length: 16
+  nozzle_radius: 32
+  nozzle_length: 32
 --- !u!114 &1570121836
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -666,13 +667,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   CS: {fileID: 7200000, guid: 30cdde274c3088142aa1e149d837be94, type: 3}
-  MaxN: 40960000
-  CurN: 65520
-  IncN: 32760
+  MaxN: 409600000
+  CurN: 65536
+  IncN: 65536
   RenderMode: 2
   particleMatTextured: {fileID: 2100000, guid: 2e4849c520cc794479cdb2311a2d113d, type: 2}
   particleMatPure: {fileID: 2100000, guid: 5f8688e3965b92c4b8dee62809a56483, type: 2}
   particleMatProcedual: {fileID: 2100000, guid: b6332e379f8ab7646a6fed6a7c77f38b, type: 2}
+  particleMatBillboard: {fileID: 0}
   Scale: {x: 1, y: 1, z: 1, w: 1}
 --- !u!114 &1570121837
 MonoBehaviour:
@@ -681,7 +683,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1570121831}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 80abcc8f766351c41b0f9c5542456b5b, type: 3}
   m_Name: 
@@ -694,7 +696,7 @@ MonoBehaviour:
   LeftObject: {fileID: 17398199}
   RightObject: {fileID: 1605321615}
   DisableObjects: 1
-  LevelOfFills: 160
+  LevelOfFills: 1600
   Duplicates: 32
   FillCurve:
     serializedVersion: 2
@@ -729,7 +731,41 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+  HBar: 0.2
   Velocity: {x: 1, y: 0, z: 0}
+  VelocityScale: 1.67
+--- !u!114 &1570121838
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1570121831}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f9f7ad21876972459c03cd12a5805f0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  N: {x: 128, y: 64, z: 64}
+  Size: {x: 10, y: 5, z: 5}
+  Center1: {x: 64, y: 32, z: 32}
+  Center2: {x: 64, y: 32, z: 32}
+  Radius1: 20
+  Radius2: 12
+  Direction1: {x: 1, y: 0, z: 0}
+  Direction2: {x: 1, y: 0, z: 0}
+  GlobalVelocity: {x: 0.2, y: 0, z: 0}
+  Thickness: 5
+  HBar: 0.1
+  ParticleCount: 65536
+  BoxSize: {x: 1, y: 30, z: 30}
+  BoxCenter: {x: 64, y: 32, z: 32}
+  NFloat: {x: 0, y: 0, z: 0}
+  isf: {fileID: 1570121834}
+  particleMan: {fileID: 1570121836}
+  CS: {fileID: 7200000, guid: 6df7f032b5a051b439fe559953559690, type: 3}
+  cam: {fileID: 963194227}
+  position: {x: 180, y: 90, z: 267}
 --- !u!1 &1570326780
 GameObject:
   m_ObjectHideFlags: 0
@@ -774,7 +810,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -4216859302048453862, guid: de9868071fa1f5b4f926ac97a8b2618c, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 53.7
+      value: 49.4
       objectReference: {fileID: 0}
     - target: {fileID: -4216859302048453862, guid: de9868071fa1f5b4f926ac97a8b2618c, type: 3}
       propertyPath: m_LocalPosition.y
@@ -831,6 +867,10 @@ PrefabInstance:
     - target: {fileID: -927199367670048503, guid: de9868071fa1f5b4f926ac97a8b2618c, type: 3}
       propertyPath: m_Name
       value: teapot1w
+      objectReference: {fileID: 0}
+    - target: {fileID: -927199367670048503, guid: de9868071fa1f5b4f926ac97a8b2618c, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -233028749858717482, guid: de9868071fa1f5b4f926ac97a8b2618c, type: 3}
       propertyPath: m_Name

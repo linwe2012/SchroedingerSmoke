@@ -214,7 +214,7 @@ public class ParticleMan : MonoBehaviour
     public int CurN = 1024;
     public int IncN = 256;
 
-    int ChunkSize = 1024 * 256;
+    int ChunkSize = 1024 * 256 * 64;
     Mesh meshTextured;
     Mesh meshPure;
     Mesh meshPlane;
@@ -293,13 +293,17 @@ public class ParticleMan : MonoBehaviour
         meshPlane = GeometryGenerator.Plane(0.2f, 0.2f, 2, 2);
     }
 
-    public void Init(ISF _isf, int _MaxN = -1)
+    public void Init(ISF _isf, int _MaxN = -1, int _CurN = -1)
     {
         DataManaging = ManagingMode.CenterPool;
 
         if (_MaxN > 0)
         {
             MaxN = _MaxN;
+        }
+        if(_CurN > 0)
+        {
+            CurN = _CurN;
         }
         
         InitComputeShader(_isf);
@@ -423,6 +427,7 @@ public class ParticleMan : MonoBehaviour
         public int kernId;
         public int threads;
         public Vector4 color;
+        public int groud_id;
     }
 
     static public void InitMultiKindKernels(ComputeShader cs, string name, out int[] kerns)
@@ -445,6 +450,7 @@ public class ParticleMan : MonoBehaviour
         particleIterator.kernId = (int)GPUThreads.T1024 & (int)GPUThreads.T_INDEX;
         particleIterator.threads = (int)GPUThreads.T1024 & (int)GPUThreads.T_DIV;
         particleIterator.color = new Vector4(1, 1, 1, 0);
+        particleIterator.groud_id = -1;
 
         int i = 0;
         for (; i < ParticlePostionList.Count; ++i)
@@ -486,6 +492,7 @@ public class ParticleMan : MonoBehaviour
             var buffers = Groups[k].Buffers;
             var count = Groups[k].Count;
             particleIterator.color = Groups[k].Color;
+            particleIterator.groud_id = k;
 
             int i = 0;
             for (; i < buffers.Count; ++i)

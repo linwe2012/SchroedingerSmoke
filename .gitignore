@@ -8,4 +8,13 @@ obj
 Temp
 # 构建目录
 Build
+**/Build.zip
 *.csproj
+
+**/isf.velo.json
+
+test/
+RenderResults
+
+*.mp4
+*.mp4.meta

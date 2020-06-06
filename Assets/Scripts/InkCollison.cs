@@ -29,6 +29,7 @@ class Jet
 
     int kernelCreateNozzleMask;
     int kernelNozzleUpdatePsi;
+    
 
 
     public void Initialize(ComputeShader _CS, ISF _isf)
@@ -158,26 +159,37 @@ public class InkCollison : MonoBehaviour
     public int LevelOfFills = 10;
     public int Duplicates = 2;
     public AnimationCurve FillCurve;
+    public float HBar = 0.2f;
 
     List<Jet> jets = new List<Jet>();
 
 
     int[] kernelClamp;
-
+    int[] kernelInitPsiMask;
+    
     RenderTexture psi1;
     RenderTexture psi2;
+    RenderTexture psi_mask;
+
 
     public Vector3 Velocity = new Vector3(1, 0, 0);
-    public float VelocityScale = 1;
+    public float VelocityScale = 1.67f;
 
+    int kernelFlushPsiMask;
     int kernelInitInkCollisionPsi;
+    int kernelUpdatePsiGlobal;
+
     public void InitComputeShader()
     {
         kernelClamp = new int[(int)GPUThreads.T_KINDS];
 
         ParticleMan.InitMultiKindKernels(CS, "Clamp", out kernelClamp);
+        ParticleMan.InitMultiKindKernels(CS, "InitPsiMask", out kernelInitPsiMask);
 
+        kernelFlushPsiMask = CS.FindKernel("FlushPsiMask");
         kernelInitInkCollisionPsi = CS.FindKernel("InitInkCollisionPsi");
+        kernelUpdatePsiGlobal = CS.FindKernel("UpdatePsiGlobal");
+
         CS.SetVector("size", isf.size);
         int[] res = isf.GetGrids();
         CS.SetInts("res", res);
@@ -192,7 +204,7 @@ public class InkCollison : MonoBehaviour
 
 
 
-    List<Vector4> LoadMesh(GameObject obj, int fill, int dup, float dir, out Jet jet)
+    List<Vector4> LoadMesh(GameObject obj, int fill, int dup, float dir, bool generate_jet, out Jet jet)
     {
         var mesh = obj.GetComponentInChildren<MeshFilter>();
         var vertices = mesh.mesh.vertices;
@@ -232,45 +244,98 @@ public class InkCollison : MonoBehaviour
             obj.SetActive(false);
         }
 
-        jet = new Jet();
-        // minmax.GetRenderTextureBoundingBox((int)Jet.Constants.ThreadMutiples, out Vector3Int size, out Vector3Int center);
-        // jet.nozzle_radius = ISFUtils.IntToFloat(size).x * 0.4f;
-        var N = isf.GetGrids();
-        jet.nozzle_radius = N[1] / 4;
-        jet.nozzle_length = N[1] / 4;
-        jet.nozzle_center = new Vector3(dir > 0 ? 4 : N[0] - 4 - 4, N[1] / 2, N[2] / 2);
-        jet.nozzle_velocity = new Vector3(dir, 0, 0);
-        jet.nozzle_dir = new Vector3(dir, 0, 0);
-        jet.Initialize(NozzleCS, isf);
-        // jet.ResetParameters(minmax);
-        jet.ResetParameters();
+        if(generate_jet)
+        {
+            jet = new Jet();
+            // minmax.GetRenderTextureBoundingBox((int)Jet.Constants.ThreadMutiples, out Vector3Int size, out Vector3Int center);
+            // jet.nozzle_radius = ISFUtils.IntToFloat(size).x * 0.4f;
+            var N = isf.GetGrids();
+            jet.nozzle_radius = N[1] / 4;
+            jet.nozzle_length = N[1] / 4;
+            jet.nozzle_center = new Vector3(dir > 0 ? 4 : N[0] - 4 - 4, N[1] / 2, N[2] / 2);
+            jet.nozzle_velocity = new Vector3(dir, 0, 0);
+            jet.nozzle_dir = new Vector3(dir, 0, 0);
+            jet.Initialize(NozzleCS, isf);
+            // jet.ResetParameters(minmax);
+            jet.ResetParameters();
+        }
+        else
+        {
+            jet = null;
+        }
         return vres;
+    }
+
+    void UpdateGlabalMaskedPsi(ref RenderTexture psi1, ref RenderTexture psi2)
+    {
+        CS.SetTexture(kernelUpdatePsiGlobal, "Psi1", psi1);
+        CS.SetTexture(kernelUpdatePsiGlobal, "Psi2", psi2);
+        CS.SetTexture(kernelUpdatePsiGlobal, "PsiMask", psi_mask);
+
+        var velo = new Vector3(VelocityScale, 0, 0);
+        var volecity2 = Vector3.Dot(velo, velo);
+        float omega = volecity2 / (2 * isf.hbar);
+        CS.SetFloat("omega_t", omega * isf.current_tick * isf.estimate_dt);
+        CS.SetVector("velocity", velo);
+
+        DispatchCS(kernelUpdatePsiGlobal);
+
+        isf.PressureProject(ref psi1, ref psi2);
+    }
+
+    void ComputePsiMask()
+    {
+        foreach (var part in particles.AllCurrentParticles())
+        {
+            var kern = kernelInitPsiMask[part.kernId];
+            CS.SetTexture(kern, "PsiMask", psi_mask);
+            CS.SetBuffer(kern, "ParticlePostion", part.buf);
+            if (part.groud_id == 0)
+            {
+                CS.SetFloat("direction", -VelocityScale);
+            }
+            else
+            {
+                CS.SetFloat("direction", VelocityScale);
+            }
+
+            CS.Dispatch(kern, part.count / part.threads, 1, 1);
+        }
     }
 
     void InitilizeParticles()
     {
         Jet ljet, rjet;
 
-        var lmesh = LoadMesh(LeftObject, LevelOfFills, Duplicates, -VelocityScale, out ljet);
-        var rmesh = LoadMesh(RightObject, LevelOfFills, Duplicates, VelocityScale, out rjet);
+        var lmesh = LoadMesh(LeftObject, LevelOfFills, Duplicates, -VelocityScale, false, out ljet);
+        var rmesh = LoadMesh(RightObject, LevelOfFills, Duplicates, VelocityScale, false, out rjet);
 
         particles.GroupInit(isf);
         particles.AddGroup(new Vector4(1, 0, 0, 0), lmesh.ToArray());
         particles.AddGroup(new Vector4(0, 0, 1, 0), rmesh.ToArray());
 
+        CS.SetTexture(kernelFlushPsiMask, "PsiMask", psi_mask);
+        DispatchCS(kernelFlushPsiMask);
 
-        jets.Add(ljet);
-        jets.Add(rjet);
+        ComputePsiMask();
 
-        foreach (var jet in jets)
+        for (int i = 0; i < 10; ++i)
         {
-            for(int i = 0; i < 10; ++i)
-            {
-                jet.UpdatePsi(ref psi1, ref psi2);
-            }
-        }
+            UpdateGlabalMaskedPsi(ref psi1, ref psi2);
 
-        fft.ExportComplex3D(psi1, "test/ink.ps1.json");
+        }
+        //jets.Add(ljet);
+        //jets.Add(rjet);
+        //
+        //foreach (var jet in jets)
+        //{
+        //    for(int i = 0; i < 10; ++i)
+        //    {
+        //        jet.UpdatePsi(ref psi1, ref psi2);
+        //    }
+        //}
+
+        // fft.ExportComplex3D(psi1, "test/ink.ps1.json");
     }
 
     void UpdatePsi(ref RenderTexture psi1, ref RenderTexture psi2)
@@ -289,12 +354,15 @@ public class InkCollison : MonoBehaviour
         isf.InitComputeShader();
         isf.InitISF();
 
+        isf.hbar = HBar;
+
         InitComputeShader();
 
         var N = isf.N;
 
         psi1 = FFT.CreateRenderTexture3D(N[0], N[1], N[2], RenderTextureFormat.RGFloat);
         psi2 = FFT.CreateRenderTexture3D(N[0], N[1], N[2], RenderTextureFormat.RGFloat);
+        psi_mask = FFT.CreateRenderTexture3D(N[0], N[1], N[2], RenderTextureFormat.RFloat);
 
         isf.InitializePsi(ref psi1, ref psi2);
 
@@ -335,6 +403,9 @@ public class InkCollison : MonoBehaviour
         isf.Normalize(ref psi1, ref psi2);
         isf.PressureProject(ref psi1, ref psi2);
 
+        //DispatchCS(kernelFlushPsiMask);
+        //ComputePsiMask();
+        UpdateGlabalMaskedPsi(ref psi1, ref psi2);
         // UpdatePsi(ref psi1, ref psi2);
 
         isf.VelocityOneForm(ref psi1, ref psi2, isf.hbar);

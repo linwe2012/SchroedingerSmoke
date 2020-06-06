@@ -3,14 +3,25 @@
 #pragma kernel Clamp256
 #pragma kernel Clamp
 
+#pragma kernel InitPsiMask
+#pragma kernel InitPsiMask64
+#pragma kernel InitPsiMask256
+
+#pragma kernel FlushPsiMask
+#pragma kernel UpdatePsiGlobal
+
 RWTexture3D<float2> Psi1;
 RWTexture3D<float2> Psi2;
 
 RWStructuredBuffer<float4> ParticlePostion;
+RWTexture3D<float> PsiMask;
+
 
 float3 size; // 空间上的大小
 uint3 res; // 空间上网格的分割数量
 int3 grids;
+
+float direction;
 
 float omega_t;
 float3 velocity;
@@ -146,4 +157,79 @@ void DoExpand(uint3 id)
     float4 pos = ParticlePostion[i];
     
     OutpuBuf[id.x] = mul(transform, (pos + v)) + translate;
+}
+
+
+THE_THREDS
+void FlushPsiMask(uint3 id : SV_DispatchThreadID)
+{
+    PsiMask[id] = 0;
+}
+
+void DoInitPsiMask(uint3 id)
+{
+    float3 part = ParticlePostion[id.x].xyz;
+    uint3 pf = floor(part);
+    uint3 pc = ceil(part);
+    
+    uint3 p1 = uint3(pf.x, pf.y, pf.z) % res;
+    
+    uint3 p2 = uint3(pf.x, pf.y, pc.z) % res;
+    uint3 p3 = uint3(pf.x, pc.y, pf.z) % res;
+    uint3 p4 = uint3(pc.x, pf.y, pf.z) % res;
+    
+    uint3 p5 = uint3(pc.x, pc.y, pf.z) % res;
+    uint3 p6 = uint3(pc.x, pf.y, pc.z) % res;
+    uint3 p7 = uint3(pf.x, pc.y, pc.z) % res;
+    
+    uint3 p8 = uint3(pc.x, pc.y, pc.z) % res;
+    
+    PsiMask[p1] = direction;
+    PsiMask[p2] = direction;
+    PsiMask[p3] = direction;
+    PsiMask[p4] = direction;
+    PsiMask[p5] = direction;
+    PsiMask[p6] = direction;
+    PsiMask[p7] = direction;
+    PsiMask[p8] = direction;
+}
+
+
+LINE_THREADS
+void InitPsiMask(uint3 id : SV_DispatchThreadID)
+{
+    DoInitPsiMask(id);
+}
+
+LINE_THREADS64
+void InitPsiMask64(uint3 id : SV_DispatchThreadID)
+{
+    DoInitPsiMask(id);
+}
+
+LINE_THREADS256
+void InitPsiMask256(uint3 id : SV_DispatchThreadID)
+{
+    DoInitPsiMask(id);
+}
+
+THE_THREDS
+void UpdatePsiGlobal(int3 id : SV_DispatchThreadID)
+{
+    if (PsiMask[id] == 0)
+        return;
+    
+    
+    velocity.x *= PsiMask[id];
+    
+    int3 pos = id;
+    float3 phase_v = velocity * float3(pos) * size / float3(res);
+    float phase = phase_v.x + phase_v.y + phase_v.z - omega_t;
+    float amp1 = length(Psi1[pos]);
+    float amp2 = length(Psi2[pos]);
+    
+    float2 phase_c = float2(cos(phase), sin(phase));
+
+    Psi1[pos] = amp1 * phase_c;
+    Psi2[pos] = amp2 * phase_c;
 }

@@ -68,7 +68,7 @@ Shader "Unlit/ISFParticleProcedual" {
             //float scale = dot(-viewDir, i.worldNormal);
             //float4 color = tex2D(_SmokeTexture, i.uv);
 
-            return float4(_BaseColor.rgb, 0.001f);
+            return float4(_BaseColor.rgb, 0.0008f);
         }
 
 
