@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
 
-// TODO: 目前 FFT 只支持 N*N*N 的三维 fft
 
 public class FFT : MonoBehaviour
 {

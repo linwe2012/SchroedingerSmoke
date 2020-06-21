@@ -30,17 +30,17 @@ RWTexture3D<float> Nozzle;
 RWTexture3D<float4> DebugOutput;
 
 // 在 nozzle mask 中的 center
-float3 nozzle_ralative_center;
+//float3 nozzle_ralative_center;
 // 相对整个三维网格的 center
-float3 nozzle_center;
-float nozzle_radius;
-float3 nozzle_dir;
-float3 nozzle_topleft;
-float nozzle_length;
-float3 nozzle_velocity;
-float omega_t;
+//float3 nozzle_center;
+//float nozzle_radius;
+//float3 nozzle_dir;
+//float3 nozzle_topleft;
+//float nozzle_length;
+//float3 nozzle_velocity;
+//float omega_t;
 
-float3 size; // 空间上的大小
+float4 size; // 空间上的大小
 uint3 res;    // 空间上网格的分割数量
 float hbar;  // 约化普朗克常数, hbar = h / (2*pi)
 float dt;    // 时间
@@ -60,7 +60,7 @@ void InitBuffer(int3 id : SV_DispatchThreadID)
 {
     // 薛定谔在频域上时间上积分的乘子
     {
-        float3 k = (float3(id) - (res >> 1)) / size;
+        float3 k = (float3(id) - (res >> 1)) / size.xyz;
         float fac = -4 * PI * PI * hbar;
         float lambda = fac * dot(k, k);
         float intern = lambda * dt / 2.0f;
@@ -69,7 +69,7 @@ void InitBuffer(int3 id : SV_DispatchThreadID)
     
     // 泊松方程在频域上积分的乘子
     {
-        float3 grid_sz = size / res;
+        float3 grid_sz = size.xyz / res;
         float3 s = sin(PI * id / res) / grid_sz;
         float denom = dot(s, s);
         float res = -0.25 / denom;
@@ -132,7 +132,7 @@ void ComputeDivergence(int3 id : SV_DispatchThreadID)
 {
     int3 pos = (id + res - 1) % res;
     
-    float3 grid_sz = size / res;
+    float3 grid_sz = size.xyz / res;
     grid_sz = grid_sz * grid_sz;
     
     int3 pos_x = int3(pos.x, id.y, id.z);
@@ -203,7 +203,7 @@ void ReprojectVelocityToGrid(int3 id : SV_DispatchThreadID)
 {
     float3 v = Velocity[id].xyz;
     
-    v /= size / res;
+    v /= size.xyz / res;
     Velocity[id] = float4(v, 0);
 
 }

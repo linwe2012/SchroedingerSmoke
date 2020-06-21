@@ -14,11 +14,11 @@ float4 velocity;
 
 uint3 res;
 int3 grids;
-float3 size;
+float4 size;
 float omega_t;
 
-float3 box_size;
-float3 box_center;
+float4 box_size;
+float4 box_center;
 
 RWTexture3D<float2> Psi1;
 RWTexture3D<float2> Psi2;
@@ -74,7 +74,7 @@ inline float2 complexMul(float2 a, float2 b)
 THE_THREDS
 void CreateCylinderPsi(uint3 id : SV_DispatchThreadID)
 {
-    float3 vr = (id - CylinderCenter.xyz) / float3(res) * size;
+    float3 vr = (id - CylinderCenter.xyz) / float3(res) * size.xyz;
     float z = dot(CylinderNormal.xyz, vr);
     float dist = dot(vr, vr);
     
@@ -108,7 +108,7 @@ THE_THREDS
 void InitPsi(int3 id : SV_DispatchThreadID)
 {
     int3 pos = id;
-    float3 phase_v = velocity.xyz * float3(pos) * size / float3(res);
+    float3 phase_v = velocity.xyz * float3(pos) * size.xyz / float3(res);
     float phase = phase_v.x + phase_v.y + phase_v.z - omega_t;
     float amp1 = length(Psi1[pos]);
     float amp2 = length(Psi2[pos]);
@@ -129,9 +129,9 @@ float3 get_randf(uint3 x)
 void DoInitParticles(uint3 id)
 {
     float3 v = randf(wang_hash(id.x ^ rng_state)) * 2 - 1;
-    v *= box_size;
+    v *= box_size.xyz;
     
-    ParticlePostion[id.x] = float4(v + box_center, 1);
+    ParticlePostion[id.x] = float4(v + box_center.xyz, 1);
 }
 
 

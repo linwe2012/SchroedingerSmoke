@@ -18,3 +18,6 @@ RenderResults
 
 *.mp4
 *.mp4.meta
+
+Build.*/
+Build.*

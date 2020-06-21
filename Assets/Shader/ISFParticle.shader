@@ -78,7 +78,7 @@ Shader "Unlit/ISFParticle" {
 
             // scale = lerp(0.3, 0.8, scale);
             // return float4(0.99, 0.99, 1.0, 0.01);
-            float alpha = (color.r + color.g + color.b - 0.3f) * 0.001f;
+            float alpha = (color.r + color.g + color.b - 0.3f) * 0.002f;
             alpha = clamp(alpha, 0, 1);
             //float atten = LIGHT_ATTENUATION(i);
             return float4(_BaseColor.rgb, alpha);

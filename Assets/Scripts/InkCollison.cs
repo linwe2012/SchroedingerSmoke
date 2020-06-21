@@ -10,10 +10,13 @@ class Jet
     public Vector3 nozzle_right;
     public Vector3 nozzle_dir = new Vector3(1, 0, 0);
     public Vector3 nozzle_velocity = new Vector3(1, 0, 0);
+    
     Vector3 nozzle_up;
     Vector3 nozzle_relative_center;
     Vector3 nozzle_center_in_shader;
     Vector3 topleft;
+
+    
     
 
     public enum Constants {
@@ -174,6 +177,9 @@ public class InkCollison : MonoBehaviour
 
     public Vector3 Velocity = new Vector3(1, 0, 0);
     public float VelocityScale = 1.67f;
+    public Vector3 transa = new Vector3(10, 20, 20);
+    public Vector3 transb = new Vector3(10, 20, 20);
+    public float InvDt = 24;
 
     int kernelFlushPsiMask;
     int kernelInitInkCollisionPsi;
@@ -204,7 +210,7 @@ public class InkCollison : MonoBehaviour
 
 
 
-    List<Vector4> LoadMesh(GameObject obj, int fill, int dup, float dir, bool generate_jet, out Jet jet)
+    List<Vector4> LoadMesh(GameObject obj, int fill, int dup, float dir, bool generate_jet, Vector3 trans, out Jet jet)
     {
         var mesh = obj.GetComponentInChildren<MeshFilter>();
         var vertices = mesh.mesh.vertices;
@@ -226,11 +232,11 @@ public class InkCollison : MonoBehaviour
                 {
                     if (Random.Range(0, j + 1) == j)
                     {
-                        var c = mat.MultiplyVector(vertices[i]);
-
+                        var c = mat.MultiplyVector(vertices[i]) ;
+                        // var c = obj.transform.TransformVector(vertices[i]) + trans;
                         var res = new Vector4(c.x, c.y, c.z, 1);
                         res += pos4;
-                        res += new Vector4(Random.Range(-0.1f, 0.1f), Random.Range(-0.1f, 0.1f), Random.Range(-0.1f, 0.1f), 0);
+                        // res += new Vector4(Random.Range(-0.1f, 0.1f), Random.Range(-0.1f, 0.1f), Random.Range(-0.1f, 0.1f), 0);
                         // minmax.Feed(new Vector3(res.x, res.y, res.z));
                         vres.Add(res);
                     }
@@ -280,7 +286,7 @@ public class InkCollison : MonoBehaviour
 
         DispatchCS(kernelUpdatePsiGlobal);
 
-        isf.PressureProject(ref psi1, ref psi2);
+        // isf.PressureProject(ref psi1, ref psi2);
     }
 
     void ComputePsiMask()
@@ -307,8 +313,8 @@ public class InkCollison : MonoBehaviour
     {
         Jet ljet, rjet;
 
-        var lmesh = LoadMesh(LeftObject, LevelOfFills, Duplicates, -VelocityScale, false, out ljet);
-        var rmesh = LoadMesh(RightObject, LevelOfFills, Duplicates, VelocityScale, false, out rjet);
+        var lmesh = LoadMesh(LeftObject, LevelOfFills, Duplicates, -VelocityScale,  false, transa, out ljet);
+        var rmesh = LoadMesh(RightObject, LevelOfFills, Duplicates, VelocityScale, false, transb, out rjet);
 
         particles.GroupInit(isf);
         particles.AddGroup(new Vector4(1, 0, 0, 0), lmesh.ToArray());
@@ -319,11 +325,13 @@ public class InkCollison : MonoBehaviour
 
         ComputePsiMask();
 
-        for (int i = 0; i < 10; ++i)
+        for (int i = 0; i < 100; ++i)
         {
             UpdateGlabalMaskedPsi(ref psi1, ref psi2);
-
+            isf.PressureProject(ref psi1, ref psi2);
         }
+        // UpdateGlabalMaskedPsi(ref psi1, ref psi2);
+        // isf.PressureProject(ref psi1, ref psi2);
         //jets.Add(ljet);
         //jets.Add(rjet);
         //
@@ -351,10 +359,13 @@ public class InkCollison : MonoBehaviour
         fft = isf.fft;
         fft.init();
 
+        isf.hbar = HBar;
+        isf.estimate_dt = 1.0f / InvDt;
+
         isf.InitComputeShader();
         isf.InitISF();
 
-        isf.hbar = HBar;
+        
 
         InitComputeShader();
 
@@ -405,6 +416,7 @@ public class InkCollison : MonoBehaviour
 
         //DispatchCS(kernelFlushPsiMask);
         //ComputePsiMask();
+        //UpdateGlabalMaskedPsi(ref psi1, ref psi2);
         UpdateGlabalMaskedPsi(ref psi1, ref psi2);
         // UpdatePsi(ref psi1, ref psi2);
 

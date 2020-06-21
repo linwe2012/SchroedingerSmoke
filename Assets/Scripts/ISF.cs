@@ -221,11 +221,11 @@ public class ISF : MonoBehaviour
         DispatchISFCS(kernelInitializePsi);
     }
 
-    //private void Start()
-    //{
-    //    if (this.KeepSceneViewActive && Application.isEditor)
-    //    {
-    //        UnityEditor.SceneView.FocusWindowIfItsOpen(typeof(UnityEditor.SceneView));
-    //    }
-    //}
+    private void Start()
+    {
+        if (this.KeepSceneViewActive && Application.isEditor)
+        {
+            UnityEditor.SceneView.FocusWindowIfItsOpen(typeof(UnityEditor.SceneView));
+        }
+    }
 }

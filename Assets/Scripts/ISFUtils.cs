@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using UnityEditor.PackageManager;
 using UnityEngine;
 
 
@@ -25,6 +26,25 @@ public static class ISFUtils
     public static Vector3Int Int3ToVector(int[] c)
     {
         return new Vector3Int(c[0], c[1], c[2]);
+    }
+
+    public static int CeilToMutiple(int x, int multiple)
+    {
+        int r = x % multiple;
+        int d = x / multiple;
+
+        if (r == 0) return x;
+
+        return (d + 1) * multiple;
+    }
+
+    public static Vector3 VecSubScalar(Vector3 a, float s)
+    {
+        return new Vector3(
+            a.x - s,
+            a.y - s,
+            a.z - s
+            );
     }
 }
 

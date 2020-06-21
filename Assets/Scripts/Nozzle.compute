@@ -11,6 +11,8 @@
 #pragma kernel NozzleClamp256
 #pragma kernel NozzleClamp64
 
+#pragma kernel CreateShpereObstacleMask
+
 #define THE_THREDS [numthreads(8, 8, 8)]
 #define MINI_THREADS [numthreads(8, 8, 8)]
 #define LINE_THREADS [numthreads(1024, 1, 1)]
@@ -32,7 +34,7 @@ RWStructuredBuffer<float4> ParticlePostion;
 // 在 nozzle mask 中的 center
 float3 nozzle_ralative_center;
 // 相对整个三维网格的 center
-float3 nozzle_center;
+float4 nozzle_center;
 float nozzle_radius;
 float3 nozzle_dir;
 float3 nozzle_topleft;
@@ -94,7 +96,7 @@ float4 GetRandomPosOnNozzle(uint seed)
     
     float3 r = (nozzle_up * cos(t) + disrtube) + (nozzle_right * sin(t) + disrtube2);
     r *= nozzle_radius * 0.9;
-    r += nozzle_center;
+    r += nozzle_center.xyz;
     r += (disrtube3 - 0.03) * nozzle_dir * 0.03;
     return float4(r, 0);
 }
@@ -125,6 +127,21 @@ void CreateNozzleMask(int3 id : SV_DispatchThreadID)
     {
         Nozzle[id] = 0;
     }
+}
+
+MINI_THREADS
+void CreateShpereObstacleMask(int3 id : SV_DispatchThreadID)
+{
+    float3 vr = (id - nozzle_center.xyz);
+    if(length(vr) < nozzle_radius)
+    {
+        Nozzle[id] = 1;
+    }
+    else
+    {
+        Nozzle[id] = 0;
+    }
+
 }
 
 MINI_THREADS

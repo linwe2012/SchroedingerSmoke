@@ -6,7 +6,7 @@
 
 RWTexture3D<float4> Velocity;
 RWStructuredBuffer<float4> ParticlePostion;
-float3 grid_size;
+float4 grid_size;
 uint3 grids;
 float dt;
 
@@ -21,7 +21,7 @@ float3 FetchEstimate(float3 pos)
     
     float4 v = Velocity[ipos.xyz];
     
-    float3 w = (pos.xyz - ipos) * grid_size;
+    float3 w = (pos.xyz - ipos) * grid_size.xyz;
     
     float x = (1 - w.z) * ((1 - w.y) * v.x + w.y * v.x);
     float y = (1 - w.z) * ((1 - w.x) * v.y + w.x * v.y);
@@ -31,7 +31,7 @@ float3 FetchEstimate(float3 pos)
     y += w.z * ((1 - w.x) * v.y + w.x * v.y);
     z += w.y * ((1 - w.x) * v.z + w.x * v.z);
 
-    return float3(x, y, z) / grid_size;
+    return float3(x, y, z) / grid_size.xyz;
 }
 
 // RK4 算法

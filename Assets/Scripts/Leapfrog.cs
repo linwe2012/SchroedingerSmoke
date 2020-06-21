@@ -25,15 +25,18 @@ public class Leapfrog : MonoBehaviour
     public Vector3 BoxSize = new Vector3(1, 30, 30);
     public Vector3 BoxCenter = new Vector3(64, 32, 32);
 
-    public Vector3 NFloat;
+    Vector3 NFloat;
+    public float DtInv = 24.0f;
 
     FFT fft;
     public ISF isf;
     public ParticleMan particleMan;
     public ComputeShader CS;
 
-    public Camera cam;
-    public Vector3 position = new Vector3(180, 90, 267);
+    public Camera Cam;
+    public Vector3 CameraPosition = new Vector3(66, 37.1f, 114.5f);
+
+    public int Scale = 1;
 
     RenderTexture psi1;
     RenderTexture psi2;
@@ -123,15 +126,33 @@ public class Leapfrog : MonoBehaviour
 
     }
 
+    void InitScale()
+    {
+        N *= Scale;
+        Center1 *= Scale;
+        Center2 *= Scale;
+        Radius1 *= Scale;
+        Radius2 *= Scale;
+        int s = Scale > 1 ? (Scale * 4) : 1;
+
+        Thickness *= Scale;
+        ParticleCount *= Scale * Scale * s;
+        BoxSize *= Scale;
+        BoxCenter *= Scale;
+        CameraPosition *= Scale * s;
+    }
+
     void Prepare()
     {
+        InitScale();
+
         fft = isf.fft;
         fft.init();
 
         isf.hbar = HBar;
         isf.size = Size;
         isf.N = N;
-        isf.estimate_dt = 1.0f / 24.0f;
+        isf.estimate_dt = 1.0f / DtInv;
 
         NFloat = ISFUtils.IntToFloat(N);
 
@@ -147,6 +168,8 @@ public class Leapfrog : MonoBehaviour
         InitComputeShader();
         InitPsi(ref psi1, ref psi2);
         InitParticles();
+
+        
     }
 
     
@@ -154,7 +177,9 @@ public class Leapfrog : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        
         Prepare();
+        Cam.transform.position = CameraPosition;
     }
 
     // Update is called once per frame
@@ -171,5 +196,7 @@ public class Leapfrog : MonoBehaviour
 
         particleMan.Emulate();
         particleMan.DoRender();
+
+        // Cam.transform.position = CameraPosition;
     }
 }

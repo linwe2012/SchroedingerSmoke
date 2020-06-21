@@ -17,7 +17,7 @@ public enum GPUThreads : int
 
 
 // Source see: http://wiki.unity3d.com/index.php/ProceduralPrimitives
-class GeometryGenerator
+public class GeometryGenerator
 {
     public static Mesh Sphere(float radius = 1f, int nbLong = 24, int nbLat = 16)
     {
@@ -214,7 +214,7 @@ public class ParticleMan : MonoBehaviour
     public int CurN = 1024;
     public int IncN = 256;
 
-    int ChunkSize = 1024 * 256 * 64;
+    int ChunkSize = 1024 * 256 * 8;
     Mesh meshTextured;
     Mesh meshPure;
     Mesh meshPlane;
@@ -287,7 +287,7 @@ public class ParticleMan : MonoBehaviour
 
     public void InitGeometries()
     {
-        meshTextured = GeometryGenerator.Sphere(0.5f, 4, 4);
+        meshTextured = GeometryGenerator.Sphere(1f, 4, 4);
         meshPure = GeometryGenerator.Sphere(0.1f, 3, 3);
         // meshPlane = GeometryGenerator.Plane(0.2f, 0.2f, 2, 2);
         meshPlane = GeometryGenerator.Plane(0.2f, 0.2f, 2, 2);
