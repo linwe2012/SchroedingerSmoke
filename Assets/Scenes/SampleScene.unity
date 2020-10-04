@@ -638,7 +638,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   fft: {fileID: 1570121832}
   ISFCS: {fileID: 7200000, guid: 21a9332914fde2d489d76f47dc5c84b1, type: 3}
-  N: {x: 256, y: 64, z: 64}
+  N: {x: 512, y: 128, z: 128}
   size: {x: 4, y: 2, z: 2}
   hbar: 0.1
   estimate_dt: 0.02083333
@@ -659,17 +659,17 @@ MonoBehaviour:
   isf: {fileID: 1570121834}
   particles: {fileID: 1570121836}
   CS: {fileID: 7200000, guid: b0e97f9e108245c4fb42b4fbec326cc9, type: 3}
-  nozzle_center: {x: 4, y: 32, z: 32}
+  nozzle_center: {x: 4, y: 64, z: 64}
   nozzle_right: {x: 0, y: 0, z: 0}
   nozzle_dir: {x: 1, y: 0, z: 0}
   nozzle_velocity: {x: 4, y: 0, z: 0}
-  nozzle_radius: 16
+  nozzle_radius: 32
   nozzle_length: 4
   CreateObstacle: 0
   ObstaleRadius: 18
-  ObstaclePosition: {x: 48, y: 32, z: 32}
+  ObstaclePosition: {x: 48, y: 128, z: 128}
   Cam: {fileID: 963194227}
-  CameraPosition: {x: 90, y: 35, z: -130}
+  CameraPosition: {x: 120, y: 70, z: -180}
   CameraRotation: {x: 0, y: 0, z: 0}
 --- !u!114 &1570121836
 MonoBehaviour:
@@ -684,10 +684,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   CS: {fileID: 7200000, guid: 30cdde274c3088142aa1e149d837be94, type: 3}
-  MaxN: 204800
-  CurN: 1024
-  IncN: 512
-  RenderMode: 1
+  MaxN: 35536000
+  CurN: 65536
+  IncN: 65536
+  RenderMode: 2
   particleMatTextured: {fileID: 2100000, guid: 2e4849c520cc794479cdb2311a2d113d, type: 2}
   particleMatPure: {fileID: 2100000, guid: 5f8688e3965b92c4b8dee62809a56483, type: 2}
   particleMatProcedual: {fileID: 2100000, guid: b6332e379f8ab7646a6fed6a7c77f38b, type: 2}

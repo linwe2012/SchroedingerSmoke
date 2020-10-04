@@ -48,6 +48,7 @@ float3 nozzle_up;
 float3 size; // 空间上的大小
 uint3 res; // 空间上网格的分割数量
 int3 grids;
+uint rng_seedx;
 
 // http://www.reedbeta.com/blog/quick-and-easy-gpu-random-numbers-in-d3d11/
 
@@ -84,7 +85,6 @@ float randf(uint rng_seed)
 // https://blog.csdn.net/menjiawan/article/details/43021507
 float4 GetRandomPosOnNozzle(uint seed)
 {
-    
     uint s2 = wang_hash(seed);
     uint s3= wang_hash(s2);
     uint s4 = wang_hash(s3);
@@ -97,7 +97,7 @@ float4 GetRandomPosOnNozzle(uint seed)
     float3 r = (nozzle_up * cos(t) + disrtube) + (nozzle_right * sin(t) + disrtube2);
     r *= nozzle_radius * 0.9;
     r += nozzle_center.xyz;
-    r += (disrtube3 - 0.03) * nozzle_dir * 0.03;
+    r += (disrtube3 - 0.03) * nozzle_dir * 100;
     return float4(r, 0);
 }
 
@@ -190,7 +190,7 @@ void NozzleClamp(uint3 id : SV_DispatchThreadID)
     
     if (ir.x < 0 || ir.y < 0 || ir.z < 0 || ir.x >= grids.x || ir.y >= grids.y || ir.z >= grids.z)
     {
-        ParticlePostion[id.x] = GetRandomPosOnNozzle(id.x);
+        ParticlePostion[id.x] = GetRandomPosOnNozzle(id.x ^ rng_seedx);
     }
 
 }
@@ -205,7 +205,7 @@ void NozzleClamp256(uint3 id : SV_DispatchThreadID)
     
     if (ir.x < 0 || ir.y < 0 || ir.z < 0 || ir.x >= grids.x - 1 || ir.y >= grids.y - 1 || ir.z >= grids.z - 1)
     {
-        ParticlePostion[id.x] = GetRandomPosOnNozzle(id.x);
+        ParticlePostion[id.x] = GetRandomPosOnNozzle(id.x ^ rng_seedx);
     }
 }
 
@@ -217,13 +217,13 @@ void NozzleClamp64(uint3 id : SV_DispatchThreadID)
     
     if (ir.x < 0 || ir.y < 0 || ir.z < 0 || ir.x >= grids.x - 1 || ir.y >= grids.y - 1 || ir.z >= grids.z - 1)
     {
-        ParticlePostion[id.x] = GetRandomPosOnNozzle(id.x);
+        ParticlePostion[id.x] = GetRandomPosOnNozzle(id.x ^ rng_seedx);
     }
 }
 
 LINE_THREADS
 void InitNozzle(uint3 id : SV_DispatchThreadID)
 {
-    ParticlePostion[id.x] = GetRandomPosOnNozzle(id.x);
+    ParticlePostion[id.x] = GetRandomPosOnNozzle(id.x ^ id.y ^ id.z);
 }
 

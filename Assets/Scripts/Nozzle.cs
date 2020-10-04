@@ -292,6 +292,7 @@ public class Nozzle : MonoBehaviour
         foreach(var buf in particles.AllCompuetBuffers())
         {
             CS.SetInt("rng_state", Random.Range(0, 999999));
+
             CS.SetBuffer(kernelInitNozzle, "ParticlePostion", buf);
             CS.Dispatch(kernelInitNozzle, buf.count / 1024, 1, 1);
         }
@@ -305,6 +306,8 @@ public class Nozzle : MonoBehaviour
         {
             int kernel = kernelNozzleClamp[part.kernId];
             CS.SetInt("rng_state", Random.Range(0, 999999));
+
+            CS.SetInt("rng_seedx", Random.Range(0, 999999));
             CS.SetBuffer(kernel, "ParticlePostion", part.buf);
             CS.Dispatch(kernel, part.count / part.threads, 1, 1);
         }

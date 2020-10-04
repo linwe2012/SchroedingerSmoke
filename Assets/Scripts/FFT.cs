@@ -443,7 +443,7 @@ public class FFT : MonoBehaviour
         return res;
     }
 
-    float[] ReadRenderTextureRaw3D(RenderTexture t, TextureFormat fmt)
+    float[] ReadRenderTextureRaw3D(RenderTexture t, TextureFormat fmt, bool sync_only)
     {
         var res = new float[t.width * t.width * t.volumeDepth*4];
 
@@ -476,13 +476,17 @@ public class FFT : MonoBehaviour
             var k = ReadRenderTextureRaw(tmp, TextureFormat.RGBAFloat);
             // k.CopyTo(res, t.width * t.width * i);
             System.Array.Copy(k, 0, res, t.width * t.width * i * 4, k.Length);
+            if (sync_only)
+            {
+                return null;
+            }
         }
         return res;
     }
 
-    float[] ReadRenderTextureRaw(RenderTexture t, TextureFormat fmt)
+    float[] ReadRenderTextureRaw(RenderTexture t, TextureFormat fmt, bool sync_only = false)
     {
-        if (t.dimension == UnityEngine.Rendering.TextureDimension.Tex3D) return ReadRenderTextureRaw3D(t, fmt);
+        if (t.dimension == UnityEngine.Rendering.TextureDimension.Tex3D) return ReadRenderTextureRaw3D(t, fmt, sync_only);
 
         var lastRT = RenderTexture.active;
         RenderTexture.active = t;
@@ -493,6 +497,11 @@ public class FFT : MonoBehaviour
         tmp_texture_2d.ReadPixels(new Rect(0, 0, t.width, t.height), 0, 0);
         
         var res  = tmp_texture_2d.GetPixelData<float>(0);
+        if (sync_only)
+        {
+            return null;
+        }
+
         var arr = new float[res.Length];
         res.CopyTo(arr);
         RenderTexture.active = lastRT;
@@ -641,8 +650,12 @@ public class FFT : MonoBehaviour
         var heigh = t.height;
         var depth = t.volumeDepth;
 
-        var colors = ReadRenderTextureRaw(t, fmt);
+        var colors = ReadRenderTextureRaw(t, fmt, filename == null);
         var index = 0;
+        if(filename == null)
+        {
+            return;
+        }
 
         InputType ipt;
         ipt.data.real = new float[depth, heigh, width];

@@ -223,9 +223,9 @@ public class ISF : MonoBehaviour
 
     private void Start()
     {
-        if (this.KeepSceneViewActive && Application.isEditor)
-        {
-            UnityEditor.SceneView.FocusWindowIfItsOpen(typeof(UnityEditor.SceneView));
-        }
+        //if (this.KeepSceneViewActive && Application.isEditor)
+        //{
+        //    UnityEditor.SceneView.FocusWindowIfItsOpen(typeof(UnityEditor.SceneView));
+        //}
     }
 }
