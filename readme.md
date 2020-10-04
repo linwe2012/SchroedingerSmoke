@@ -6,11 +6,11 @@
 
 This is an implementation of SigGraph 16' Paper, [Shrödinger's Smoke](http://page.math.tu-berlin.de/~chern/projects/SchrodingersSmoke/).
 
-I do it for final project in Advances in Computer graphics lectured by Prof. Kun Zhou.
+This is the final project in Advances in Computer graphics lectured by Prof. Kun Zhou.
 
 
 
-Below sections is sampled from my final report.
+Below sections are picked out from my final report.
 
 ### Highlights
 
