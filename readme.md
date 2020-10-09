@@ -1,6 +1,6 @@
 # Description
 
-![IMG](https://img.shields.io/badge/Platform-Window10-lightgrey) ![IMG](https://img.shields.io/badge/Visual%20Studio-2019-8d59cb) ![IMG](https://img.shields.io/badge/Unity-2020.1-222222) ![cpu](https://img.shields.io/badge/CPU-Intel%20i7--7700HQ-blue) ![gpu](https://img.shields.io/badge/GPU-NVidia%20GTX%201050-green)
+![IMG](https://img.shields.io/badge/Platform-Window10-lightgrey?logo=windows) ![IMG](https://img.shields.io/badge/Visual%20Studio-2019-8d59cb?logo=visual-studio) ![IMG](https://img.shields.io/badge/Unity-2020.1-222222?logo=unity) ![cpu](https://img.shields.io/badge/CPU-Intel%20i7--7700HQ-blue?logo=intel) ![gpu](https://img.shields.io/badge/GPU-NVidia%20GTX%201050-green?logo=nvidia)
 
 
 
