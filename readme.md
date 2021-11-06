@@ -12,6 +12,12 @@ This is an implementation of SigGraph 16' Paper, [Schrödinger's Smoke](http://m
 This is the final project in Advances in Computer graphics lectured by Prof. Kun Zhou.
 
 
+## Description
+
+The project tries to reproduce the SigGraph 16' paper Schrödinger's Smoke. The paper uses the Schrödinger equation to simulate fluids. 
+The main algorithm is implemented with compute shader and thus runs on GPU. It is faster than the CPU implemenation of the original paper.
+The algorithm is visualized in Unity Engine with 2 scenes, nozzle and leap frog (both are described by the paper). I rendered about millions of particles to demonstrate the flow of the field.
+
 
 Below sections are picked out from my final report.
 
