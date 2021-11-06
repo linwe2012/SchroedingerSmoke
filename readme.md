@@ -4,7 +4,7 @@
 
 
 
-This is an implementation of SigGraph 16' Paper, [Shrödinger's Smoke](http://page.math.tu-berlin.de/~chern/projects/SchrodingersSmoke/).
+This is an implementation of SigGraph 16' Paper, [Shrödinger's Smoke](http://multires.caltech.edu/pubs/SchrodingersSmoke.pdf).
 
 This is the final project in Advances in Computer graphics lectured by Prof. Kun Zhou.
 
